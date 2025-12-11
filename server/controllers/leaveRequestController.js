@@ -43,8 +43,10 @@ const createLeaveRequest = async (req, res) => {
       return res.status(400).json({ message: validation.message });
     }
 
-    // Get attachment paths if files were uploaded
-    const attachments = req.files ? req.files.map((file) => file.path) : [];
+    // Get attachment paths if files were uploaded (convert to URL format)
+    const attachments = req.files
+      ? req.files.map((file) => "/" + file.path.replace(/\\/g, "/"))
+      : [];
 
     // Determine if paid leave
     const isPaidLeave = validation.isPaidLeave !== false;

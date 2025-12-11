@@ -3,6 +3,22 @@ import { leaveRequestsAPI } from "../services/api";
 import Navbar from "../components/common/Navbar";
 import "./Approvals.css";
 
+// React Icons
+import {
+  FaHospital,
+  FaClipboardList,
+  FaUmbrellaBeach,
+  FaFileAlt,
+  FaCheckCircle,
+  FaBaby,
+  FaUserFriends,
+  FaChild,
+  FaPray,
+  FaMedal,
+  FaPaperclip,
+  FaTimesCircle,
+} from "react-icons/fa";
+
 const Approvals = () => {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -53,13 +69,40 @@ const Approvals = () => {
   };
 
   const getLeaveTypeName = (type) => {
-    const types = { sick: "ลาป่วย", personal: "ลากิจ", vacation: "ลาพักร้อน" };
+    const types = {
+      sick: "ลาป่วย",
+      personal: "ลากิจส่วนตัว",
+      vacation: "ลาพักผ่อน",
+      maternity: "ลาคลอดบุตร",
+      paternity: "ลาช่วยภรรยาคลอด",
+      childcare: "ลาเลี้ยงดูบุตร",
+      ordination: "ลาอุปสมบท/ฮัจย์",
+      military: "ลาตรวจเลือก",
+    };
     return types[type] || type;
   };
 
   const getLeaveTypeIcon = (type) => {
-    const icons = { sick: "🏥", personal: "📋", vacation: "🏖️" };
-    return icons[type] || "📝";
+    switch (type) {
+      case "sick":
+        return <FaHospital />;
+      case "personal":
+        return <FaClipboardList />;
+      case "vacation":
+        return <FaUmbrellaBeach />;
+      case "maternity":
+        return <FaBaby />;
+      case "paternity":
+        return <FaUserFriends />;
+      case "childcare":
+        return <FaChild />;
+      case "ordination":
+        return <FaPray />;
+      case "military":
+        return <FaMedal />;
+      default:
+        return <FaFileAlt />;
+    }
   };
 
   const formatDate = (date) => {
@@ -68,6 +111,15 @@ const Approvals = () => {
       month: "long",
       year: "numeric",
     });
+  };
+
+  // เปิดไฟล์แนบในหน้าต่างใหม่
+  const handlePreview = (fileUrl) => {
+    let normalizedPath = fileUrl.replace(/\\/g, "/");
+    if (!normalizedPath.startsWith("/")) {
+      normalizedPath = "/" + normalizedPath;
+    }
+    window.open(`http://localhost:5000${normalizedPath}`, "_blank");
   };
 
   if (loading) {
@@ -86,7 +138,9 @@ const Approvals = () => {
       <Navbar />
       <div className="approvals-page">
         <div className="page-header">
-          <h1>✅ อนุมัติการลา</h1>
+          <h1>
+            <FaCheckCircle style={{ marginRight: "0.5rem" }} /> อนุมัติการลา
+          </h1>
           <p>รายการคำขอลาที่รอการอนุมัติ ({requests.length} รายการ)</p>
         </div>
 
@@ -151,8 +205,23 @@ const Approvals = () => {
                   {request.attachments && request.attachments.length > 0 && (
                     <div className="attachments-section">
                       <span className="attachments-label">
-                        📎 มีไฟล์แนบ {request.attachments.length} ไฟล์
+                        <FaPaperclip /> ไฟล์แนบ ({request.attachments.length})
                       </span>
+                      <div className="attachments-list">
+                        {request.attachments.map((file, idx) => {
+                          const fileName = file.split("/").pop();
+                          return (
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() => handlePreview(file)}
+                              className="attachment-link"
+                            >
+                              <FaFileAlt /> {fileName}
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -163,14 +232,14 @@ const Approvals = () => {
                     onClick={() => handleAction(request._id, "reject")}
                     disabled={processing === request._id}
                   >
-                    ❌ ไม่อนุมัติ
+                    <FaTimesCircle /> ไม่อนุมัติ
                   </button>
                   <button
                     className="approve-btn"
                     onClick={() => handleAction(request._id, "approve")}
                     disabled={processing === request._id}
                   >
-                    ✅ อนุมัติ
+                    <FaCheckCircle /> อนุมัติ
                   </button>
                 </div>
               </div>

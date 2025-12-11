@@ -5,6 +5,19 @@ import Navbar from "../components/common/Navbar";
 import "./Dashboard.css";
 import React from "react";
 
+// React Icons
+import {
+  FaChartBar,
+  FaClock,
+  FaCheckCircle,
+  FaTimesCircle,
+  FaBullseye,
+  FaHospital,
+  FaClipboardList,
+  FaUmbrellaBeach,
+  FaHandPaper,
+} from "react-icons/fa";
+
 const Dashboard = () => {
   const { user } = useAuth();
   const [stats, setStats] = useState({
@@ -41,8 +54,30 @@ const Dashboard = () => {
   };
 
   const getLeaveTypeName = (type) => {
-    const types = { sick: "ลาป่วย", personal: "ลากิจ", vacation: "ลาพักร้อน" };
+    const types = {
+      sick: "ลาป่วย",
+      personal: "ลากิจส่วนตัว",
+      vacation: "ลาพักผ่อน",
+      maternity: "ลาคลอดบุตร",
+      paternity: "ลาช่วยภรรยาคลอด",
+      childcare: "ลาเลี้ยงดูบุตร",
+      ordination: "ลาอุปสมบท/ฮัจย์",
+      military: "ลาตรวจเลือก",
+    };
     return types[type] || type;
+  };
+
+  const getLeaveTypeIcon = (type) => {
+    switch (type) {
+      case "sick":
+        return <FaHospital />;
+      case "personal":
+        return <FaClipboardList />;
+      case "vacation":
+        return <FaUmbrellaBeach />;
+      default:
+        return <FaClipboardList />;
+    }
   };
 
   const getStatusBadge = (status) => {
@@ -92,7 +127,10 @@ const Dashboard = () => {
       <Navbar />
       <div className="dashboard">
         <div className="dashboard-header">
-          <h1>สวัสดี, {user?.firstName}! 👋</h1>
+          <h1>
+            สวัสดี, {user?.firstName}!{" "}
+            <FaHandPaper style={{ marginLeft: "0.3rem" }} />
+          </h1>
           <p>ยินดีต้อนรับเข้าสู่ระบบบริหารการลา</p>
         </div>
 
@@ -104,7 +142,7 @@ const Dashboard = () => {
                 background: "linear-gradient(135deg, #667eea, #764ba2)",
               }}
             >
-              📊
+              <FaChartBar />
             </div>
             <div className="stat-info">
               <h3>{stats.total}</h3>
@@ -119,7 +157,7 @@ const Dashboard = () => {
                 background: "linear-gradient(135deg, #f6d365, #fda085)",
               }}
             >
-              ⏳
+              <FaClock />
             </div>
             <div className="stat-info">
               <h3>{stats.pending}</h3>
@@ -134,7 +172,7 @@ const Dashboard = () => {
                 background: "linear-gradient(135deg, #11998e, #38ef7d)",
               }}
             >
-              ✅
+              <FaCheckCircle />
             </div>
             <div className="stat-info">
               <h3>{stats.approved}</h3>
@@ -149,7 +187,7 @@ const Dashboard = () => {
                 background: "linear-gradient(135deg, #ff6b6b, #ee5a5a)",
               }}
             >
-              ❌
+              <FaTimesCircle />
             </div>
             <div className="stat-info">
               <h3>{stats.rejected}</h3>
@@ -160,10 +198,14 @@ const Dashboard = () => {
 
         <div className="dashboard-content">
           <div className="leave-balance-card">
-            <h2>🎯 ยอดวันลาคงเหลือ</h2>
+            <h2>
+              <FaBullseye style={{ marginRight: "0.5rem" }} /> ยอดวันลาคงเหลือ
+            </h2>
             <div className="balance-grid">
               <div className="balance-item">
-                <div className="balance-icon">🏥</div>
+                <div className="balance-icon">
+                  <FaHospital />
+                </div>
                 <div className="balance-info">
                   <h4>ลาป่วย</h4>
                   <p>
@@ -185,7 +227,9 @@ const Dashboard = () => {
               </div>
 
               <div className="balance-item">
-                <div className="balance-icon">📋</div>
+                <div className="balance-icon">
+                  <FaClipboardList />
+                </div>
                 <div className="balance-info">
                   <h4>ลากิจ</h4>
                   <p>
@@ -209,7 +253,9 @@ const Dashboard = () => {
               </div>
 
               <div className="balance-item">
-                <div className="balance-icon">🏖️</div>
+                <div className="balance-icon">
+                  <FaUmbrellaBeach />
+                </div>
                 <div className="balance-info">
                   <h4>ลาพักร้อน</h4>
                   <p>
@@ -235,7 +281,9 @@ const Dashboard = () => {
           </div>
 
           <div className="recent-requests-card">
-            <h2>📋 คำขอล่าสุด</h2>
+            <h2>
+              <FaClipboardList style={{ marginRight: "0.5rem" }} /> คำขอล่าสุด
+            </h2>
             {recentRequests.length === 0 ? (
               <p className="no-data">ยังไม่มีคำขอลา</p>
             ) : (
@@ -243,11 +291,7 @@ const Dashboard = () => {
                 {recentRequests.map((request) => (
                   <div key={request._id} className="request-item">
                     <div className="request-type">
-                      {request.leaveType === "sick"
-                        ? "🏥"
-                        : request.leaveType === "personal"
-                        ? "📋"
-                        : "🏖️"}
+                      {getLeaveTypeIcon(request.leaveType)}
                     </div>
                     <div className="request-info">
                       <h4>{getLeaveTypeName(request.leaveType)}</h4>

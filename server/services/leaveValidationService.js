@@ -8,15 +8,13 @@ const WORKING_DAYS_ONLY_LEAVE_TYPES = [
   "personal",
   "vacation",
   "paternity",
-];
-
-// รายชื่อประเภทการลาที่นับรวมวันหยุด
-const INCLUDE_HOLIDAYS_LEAVE_TYPES = [
   "maternity",
   "childcare",
   "ordination",
-  "military",
 ];
+
+// รายชื่อประเภทการลาที่นับรวมวันหยุด
+const INCLUDE_HOLIDAYS_LEAVE_TYPES = ["military"];
 
 /**
  * คำนวณปีงบประมาณจากวันที่ (1 ต.ค. - 30 ก.ย.)

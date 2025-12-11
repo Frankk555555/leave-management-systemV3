@@ -1,9 +1,31 @@
 import React, { useState, useEffect } from "react";
 import { leaveRequestsAPI } from "../services/api";
+import { useAuth } from "../context/AuthContext";
 import Navbar from "../components/common/Navbar";
+import generateLeavePDF from "../utils/generateLeavePDF";
 import "./LeaveHistory.css";
 
+// React Icons
+import {
+  FaHospital,
+  FaClipboardList,
+  FaUmbrellaBeach,
+  FaFileAlt,
+  FaClock,
+  FaCheckCircle,
+  FaTimesCircle,
+  FaBan,
+  FaBaby,
+  FaUserFriends,
+  FaChild,
+  FaPray,
+  FaMedal,
+  FaPaperclip,
+  FaFilePdf,
+} from "react-icons/fa";
+
 const LeaveHistory = () => {
+  const { user } = useAuth();
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
@@ -19,6 +41,18 @@ const LeaveHistory = () => {
   useEffect(() => {
     fetchRequests();
   }, []);
+
+  // ดาวน์โหลดใบลา PDF
+  const handleDownloadPDF = async (request) => {
+    const leaveData = {
+      leaveType: request.leaveType,
+      startDate: request.startDate,
+      endDate: request.endDate,
+      reason: request.reason,
+      totalDays: request.totalDays,
+    };
+    await generateLeavePDF(leaveData, user);
+  };
 
   const fetchRequests = async () => {
     try {
@@ -69,14 +103,51 @@ const LeaveHistory = () => {
     }
   };
 
+  // เปิดไฟล์แนบในหน้าต่างใหม่
+  const handlePreview = (fileUrl) => {
+    // Normalize path - handle both old format (uploads\file.pdf) and new format (/uploads/file.pdf)
+    let normalizedPath = fileUrl.replace(/\\/g, "/");
+    if (!normalizedPath.startsWith("/")) {
+      normalizedPath = "/" + normalizedPath;
+    }
+    window.open(`http://localhost:5000${normalizedPath}`, "_blank");
+  };
+
   const getLeaveTypeName = (type) => {
-    const types = { sick: "ลาป่วย", personal: "ลากิจ", vacation: "ลาพักร้อน" };
+    const types = {
+      sick: "ลาป่วย",
+      personal: "ลากิจส่วนตัว",
+      vacation: "ลาพักผ่อน",
+      maternity: "ลาคลอดบุตร",
+      paternity: "ลาช่วยภรรยาคลอด",
+      childcare: "ลาเลี้ยงดูบุตร",
+      ordination: "ลาอุปสมบท/ฮัจย์",
+      military: "ลาตรวจเลือก",
+    };
     return types[type] || type;
   };
 
   const getLeaveTypeIcon = (type) => {
-    const icons = { sick: "🏥", personal: "📋", vacation: "🏖️" };
-    return icons[type] || "📝";
+    switch (type) {
+      case "sick":
+        return <FaHospital />;
+      case "personal":
+        return <FaClipboardList />;
+      case "vacation":
+        return <FaUmbrellaBeach />;
+      case "maternity":
+        return <FaBaby />;
+      case "paternity":
+        return <FaUserFriends />;
+      case "childcare":
+        return <FaChild />;
+      case "ordination":
+        return <FaPray />;
+      case "military":
+        return <FaMedal />;
+      default:
+        return <FaFileAlt />;
+    }
   };
 
   const getStatusBadge = (status) => {
@@ -85,25 +156,25 @@ const LeaveHistory = () => {
         bg: "linear-gradient(135deg, #fef3c7, #fde68a)",
         color: "#d97706",
         text: "รออนุมัติ",
-        icon: "⏳",
+        icon: <FaClock />,
       },
       approved: {
         bg: "linear-gradient(135deg, #d1fae5, #a7f3d0)",
         color: "#059669",
         text: "อนุมัติแล้ว",
-        icon: "✅",
+        icon: <FaCheckCircle />,
       },
       rejected: {
         bg: "linear-gradient(135deg, #fee2e2, #fecaca)",
         color: "#dc2626",
         text: "ไม่อนุมัติ",
-        icon: "❌",
+        icon: <FaTimesCircle />,
       },
       cancelled: {
         bg: "linear-gradient(135deg, #e2e8f0, #cbd5e0)",
         color: "#718096",
         text: "ยกเลิกแล้ว",
-        icon: "🚫",
+        icon: <FaBan />,
       },
     };
     const style = styles[status] || styles.pending;
@@ -147,7 +218,9 @@ const LeaveHistory = () => {
       <div className="leave-history-page">
         <div className="page-header">
           <div>
-            <h1>📋 ประวัติการลา</h1>
+            <h1>
+              <FaClipboardList style={{ marginRight: "0.5rem" }} /> ประวัติการลา
+            </h1>
             <p>รายการคำขอลาทั้งหมดของคุณ</p>
           </div>
           <div className="filter-tabs">
@@ -230,8 +303,23 @@ const LeaveHistory = () => {
                   {request.attachments && request.attachments.length > 0 && (
                     <div className="attachments-section">
                       <span className="attachments-label">
-                        📎 ไฟล์แนบ ({request.attachments.length})
+                        <FaPaperclip /> ไฟล์แนบ ({request.attachments.length})
                       </span>
+                      <div className="attachments-list">
+                        {request.attachments.map((file, idx) => {
+                          const fileName = file.split("/").pop();
+                          return (
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() => handlePreview(file)}
+                              className="attachment-link"
+                            >
+                              <FaFileAlt /> {fileName}
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
                   )}
 
@@ -247,6 +335,16 @@ const LeaveHistory = () => {
                   <span className="created-date">
                     ยื่นเมื่อ {formatDate(request.createdAt)}
                   </span>
+                  
+                  {/* ปุ่มดาวน์โหลด PDF */}
+                  <button
+                    className="pdf-btn"
+                    onClick={() => handleDownloadPDF(request)}
+                    title="ดาวน์โหลดใบลา PDF"
+                  >
+                    <FaFilePdf /> ใบลา
+                  </button>
+
                   {request.status === "pending" && (
                     <div className="action-buttons">
                       <button

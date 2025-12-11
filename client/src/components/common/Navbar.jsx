@@ -4,6 +4,22 @@ import { useAuth } from "../../context/AuthContext";
 import NotificationBell from "./NotificationBell";
 import "./Navbar.css";
 
+// React Icons
+import {
+  FaGraduationCap,
+  FaChartBar,
+  FaEdit,
+  FaClipboardList,
+  FaCalendarAlt,
+  FaUsers,
+  FaCheckCircle,
+  FaCog,
+  FaFileAlt,
+  FaUsersCog,
+  FaCalendarCheck,
+  FaSignOutAlt,
+} from "react-icons/fa";
+
 const Navbar = () => {
   const { user, logout, isAdmin, isSupervisor } = useAuth();
   const navigate = useNavigate();
@@ -16,7 +32,9 @@ const Navbar = () => {
   return (
     <nav className="navbar">
       <div className="navbar-brand">
-        <h1>🎓 ระบบบริหารการลา</h1>
+        <h1>
+          <FaGraduationCap style={{ marginRight: "0.5rem" }} /> ระบบบริหารการลา
+        </h1>
       </div>
 
       <div className="navbar-menu">
@@ -26,7 +44,7 @@ const Navbar = () => {
             isActive ? "nav-link active" : "nav-link"
           }
         >
-          📊 แดชบอร์ด
+          <FaChartBar style={{ marginRight: "0.3rem" }} /> แดชบอร์ด
         </NavLink>
         <NavLink
           to="/leave-request"
@@ -34,7 +52,7 @@ const Navbar = () => {
             isActive ? "nav-link active" : "nav-link"
           }
         >
-          ✍️ ขอลา
+          <FaEdit style={{ marginRight: "0.3rem" }} /> ขอลา
         </NavLink>
         <NavLink
           to="/leave-history"
@@ -42,7 +60,7 @@ const Navbar = () => {
             isActive ? "nav-link active" : "nav-link"
           }
         >
-          📋 ประวัติการลา
+          <FaClipboardList style={{ marginRight: "0.3rem" }} /> ประวัติการลา
         </NavLink>
         <NavLink
           to="/calendar"
@@ -50,7 +68,7 @@ const Navbar = () => {
             isActive ? "nav-link active" : "nav-link"
           }
         >
-          📅 ปฏิทิน
+          <FaCalendarAlt style={{ marginRight: "0.3rem" }} /> ปฏิทิน
         </NavLink>
         <NavLink
           to="/team-calendar"
@@ -58,7 +76,7 @@ const Navbar = () => {
             isActive ? "nav-link active" : "nav-link"
           }
         >
-          👥 วันลาทีม
+          <FaUsers style={{ marginRight: "0.3rem" }} /> วันลาทีม
         </NavLink>
 
         {isSupervisor && (
@@ -68,25 +86,27 @@ const Navbar = () => {
               isActive ? "nav-link active" : "nav-link"
             }
           >
-            ✅ อนุมัติลา
+            <FaCheckCircle style={{ marginRight: "0.3rem" }} /> อนุมัติลา
           </NavLink>
         )}
 
         {isAdmin && (
           <div className="nav-dropdown">
-            <span className="nav-link dropdown-toggle">⚙️ จัดการระบบ</span>
+            <span className="nav-link dropdown-toggle">
+              <FaCog style={{ marginRight: "0.3rem" }} /> จัดการระบบ
+            </span>
             <div className="dropdown-menu">
               <NavLink to="/reports" className="dropdown-item">
-                📊 รายงาน
+                <FaChartBar style={{ marginRight: "0.3rem" }} /> รายงาน
               </NavLink>
               <NavLink to="/users" className="dropdown-item">
-                👥 จัดการบุคลากร
+                <FaUsersCog style={{ marginRight: "0.3rem" }} /> จัดการบุคลากร
               </NavLink>
               <NavLink to="/leave-types" className="dropdown-item">
-                📝 ประเภทการลา
+                <FaFileAlt style={{ marginRight: "0.3rem" }} /> ประเภทการลา
               </NavLink>
               <NavLink to="/holidays" className="dropdown-item">
-                🎉 วันหยุด
+                <FaCalendarCheck style={{ marginRight: "0.3rem" }} /> วันหยุด
               </NavLink>
             </div>
           </div>
@@ -108,7 +128,7 @@ const Navbar = () => {
           </span>
         </div>
         <button onClick={handleLogout} className="logout-btn">
-          🚪 ออกจากระบบ
+          <FaSignOutAlt style={{ marginRight: "0.3rem" }} /> ออกจากระบบ
         </button>
       </div>
     </nav>

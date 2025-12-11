@@ -5,6 +5,24 @@ import { useAuth } from "../context/AuthContext";
 import Navbar from "../components/common/Navbar";
 import "./LeaveRequest.css";
 
+// React Icons
+import {
+  FaHospital,
+  FaClipboardList,
+  FaUmbrellaBeach,
+  FaBaby,
+  FaUserFriends,
+  FaChild,
+  FaPray,
+  FaMedal,
+  FaEdit,
+  FaPaperclip,
+  FaFileAlt,
+  FaInfoCircle,
+  FaTimes,
+  FaCheckCircle,
+} from "react-icons/fa";
+
 const LeaveRequest = () => {
   const { user, updateUser } = useAuth();
   const navigate = useNavigate();
@@ -23,7 +41,7 @@ const LeaveRequest = () => {
   const [files, setFiles] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+  const [showSuccessModal, setShowSuccessModal] = useState(false); // แสดง popup สำเร็จ
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -42,11 +60,40 @@ const LeaveRequest = () => {
     setFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
+  // ประเภทลาที่นับเฉพาะวันทำการ (ไม่รวมเสาร์-อาทิตย์)
+  const WORKING_DAYS_ONLY = [
+    "sick",
+    "personal",
+    "vacation",
+    "paternity",
+    "maternity",
+    "childcare",
+    "ordination",
+  ];
+
   const calculateDays = () => {
     if (!formData.startDate || !formData.endDate) return 0;
     const start = new Date(formData.startDate);
     const end = new Date(formData.endDate);
     if (end < start) return 0;
+
+    // ถ้าเป็นประเภทลาที่นับเฉพาะวันทำการ
+    if (WORKING_DAYS_ONLY.includes(formData.leaveType)) {
+      let workingDays = 0;
+      const current = new Date(start);
+
+      while (current <= end) {
+        const dayOfWeek = current.getDay();
+        // ไม่ใช่เสาร์ (6) หรืออาทิตย์ (0)
+        if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+          workingDays++;
+        }
+        current.setDate(current.getDate() + 1);
+      }
+      return workingDays;
+    }
+
+    // ประเภทลาอื่นๆ นับรวมวันหยุด
     const diff = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
     return diff;
   };
@@ -60,7 +107,6 @@ const LeaveRequest = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
-    setSuccess("");
 
     const days = calculateDays();
     if (days <= 0) {
@@ -96,17 +142,10 @@ const LeaveRequest = () => {
         formDataToSend.append("attachments", file);
       });
 
-      const response = await leaveRequestsAPI.create(formDataToSend);
+      await leaveRequestsAPI.create(formDataToSend);
 
-      if (response.data.message) {
-        setSuccess(response.data.message);
-      } else {
-        setSuccess("ยื่นคำขอลาเรียบร้อยแล้ว");
-      }
-
-      setTimeout(() => {
-        navigate("/leave-history");
-      }, 2000);
+      // แสดง popup สำเร็จ
+      setShowSuccessModal(true);
     } catch (err) {
       setError(err.response?.data?.message || "เกิดข้อผิดพลาด");
     } finally {
@@ -114,54 +153,66 @@ const LeaveRequest = () => {
     }
   };
 
+  // ปิด modal และไปหน้าประวัติ
+  const handleCloseModal = () => {
+    setShowSuccessModal(false);
+    navigate("/leave-history");
+  };
+
   const leaveTypes = [
-    { value: "sick", label: "ลาป่วย", icon: "🏥", color: "#11998e", days: 60 },
+    {
+      value: "sick",
+      label: "ลาป่วย",
+      icon: <FaHospital />,
+      color: "#11998e",
+      days: 60,
+    },
     {
       value: "personal",
       label: "ลากิจส่วนตัว",
-      icon: "📋",
+      icon: <FaClipboardList />,
       color: "#667eea",
       days: 45,
     },
     {
       value: "vacation",
       label: "ลาพักผ่อน",
-      icon: "🏖️",
+      icon: <FaUmbrellaBeach />,
       color: "#f6d365",
       days: 10,
     },
     {
       value: "maternity",
       label: "ลาคลอดบุตร",
-      icon: "👶",
+      icon: <FaBaby />,
       color: "#ff6b9d",
       days: 90,
     },
     {
       value: "paternity",
       label: "ลาช่วยภรรยาคลอด",
-      icon: "👨‍👩‍👦",
+      icon: <FaUserFriends />,
       color: "#4facfe",
       days: 15,
     },
     {
       value: "childcare",
       label: "ลาเลี้ยงดูบุตร",
-      icon: "🍼",
+      icon: <FaChild />,
       color: "#a8edea",
       days: 150,
     },
     {
       value: "ordination",
       label: "ลาอุปสมบท/ฮัจย์",
-      icon: "🙏",
+      icon: <FaPray />,
       color: "#ffecd2",
       days: 120,
     },
     {
       value: "military",
       label: "ลาตรวจเลือก",
-      icon: "🎖️",
+      icon: <FaMedal />,
       color: "#667eea",
       days: "ไม่จำกัด",
     },
@@ -196,14 +247,15 @@ const LeaveRequest = () => {
       <Navbar />
       <div className="leave-request-page">
         <div className="page-header">
-          <h1>✍️ ยื่นคำขอลา</h1>
+          <h1>
+            <FaEdit style={{ marginRight: "0.5rem" }} /> ยื่นคำขอลา
+          </h1>
           <p>กรอกข้อมูลการลาของคุณ</p>
         </div>
 
         <div className="leave-request-container">
           <form onSubmit={handleSubmit} className="leave-form">
             {error && <div className="alert alert-error">{error}</div>}
-            {success && <div className="alert alert-success">{success}</div>}
 
             <div className="form-section">
               <h3>ประเภทการลา</h3>
@@ -240,14 +292,20 @@ const LeaveRequest = () => {
                 ))}
               </div>
               {getLeaveInfo() && (
-                <div className="leave-info-box">ℹ️ {getLeaveInfo()}</div>
+                <div className="leave-info-box">
+                  <FaInfoCircle style={{ marginRight: "0.5rem" }} />{" "}
+                  {getLeaveInfo()}
+                </div>
               )}
             </div>
 
             {/* Conditional Fields */}
             {formData.leaveType === "paternity" && (
               <div className="form-section conditional-section">
-                <h3>👶 วันที่ภรรยาคลอดบุตร</h3>
+                <h3>
+                  <FaBaby style={{ marginRight: "0.5rem" }} />{" "}
+                  วันที่ภรรยาคลอดบุตร
+                </h3>
                 <input
                   type="date"
                   name="childBirthDate"
@@ -260,7 +318,10 @@ const LeaveRequest = () => {
 
             {formData.leaveType === "ordination" && (
               <div className="form-section conditional-section">
-                <h3>🙏 วันที่อุปสมบท/เดินทางฮัจย์</h3>
+                <h3>
+                  <FaPray style={{ marginRight: "0.5rem" }} />{" "}
+                  วันที่อุปสมบท/เดินทางฮัจย์
+                </h3>
                 <input
                   type="date"
                   name="ceremonyDate"
@@ -273,7 +334,10 @@ const LeaveRequest = () => {
 
             {formData.leaveType === "sick" && (
               <div className="form-section conditional-section">
-                <h3>🏥 ข้อมูลเพิ่มเติม</h3>
+                <h3>
+                  <FaHospital style={{ marginRight: "0.5rem" }} />{" "}
+                  ข้อมูลเพิ่มเติม
+                </h3>
                 <label className="checkbox-label">
                   <input
                     type="checkbox"
@@ -355,7 +419,9 @@ const LeaveRequest = () => {
                   accept=".jpg,.jpeg,.png,.pdf,.doc,.docx"
                   style={{ display: "none" }}
                 />
-                <div className="upload-icon">📎</div>
+                <div className="upload-icon">
+                  <FaPaperclip />
+                </div>
                 <p>คลิกเพื่อเลือกไฟล์หรือลากไฟล์มาวาง</p>
                 <span>รองรับ: JPG, PNG, PDF, DOC (สูงสุด 5 ไฟล์)</span>
               </div>
@@ -364,14 +430,16 @@ const LeaveRequest = () => {
                 <div className="file-list">
                   {files.map((file, index) => (
                     <div key={index} className="file-item">
-                      <span className="file-icon">📄</span>
+                      <span className="file-icon">
+                        <FaFileAlt />
+                      </span>
                       <span className="file-name">{file.name}</span>
                       <button
                         type="button"
                         onClick={() => removeFile(index)}
                         className="remove-file"
                       >
-                        ✕
+                        <FaTimes />
                       </button>
                     </div>
                   ))}
@@ -385,6 +453,23 @@ const LeaveRequest = () => {
           </form>
         </div>
       </div>
+
+      {/* Success Modal Popup */}
+      {showSuccessModal && (
+        <div className="modal-overlay" onClick={handleCloseModal}>
+          <div className="success-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="success-icon">
+              <FaCheckCircle />
+            </div>
+            <h2>ยื่นคำขอลาสำเร็จ!</h2>
+            <p>คำขอลาของคุณถูกส่งเรียบร้อยแล้ว</p>
+            <p>กรุณารอการอนุมัติจากหัวหน้างาน</p>
+            <button className="modal-close-btn" onClick={handleCloseModal}>
+              ไปหน้าประวัติการลา
+            </button>
+          </div>
+        </div>
+      )}
     </>
   );
 };
