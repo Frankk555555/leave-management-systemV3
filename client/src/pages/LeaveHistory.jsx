@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { leaveRequestsAPI } from "../services/api";
 import { useAuth } from "../context/AuthContext";
+import { useToast } from "../components/common/Toast";
 import Navbar from "../components/common/Navbar";
 import generateLeavePDF from "../utils/generateLeavePDF";
 import "./LeaveHistory.css";
@@ -22,10 +23,13 @@ import {
   FaMedal,
   FaPaperclip,
   FaFilePdf,
+  FaEdit,
+  FaTimes,
 } from "react-icons/fa";
 
 const LeaveHistory = () => {
   const { user } = useAuth();
+  const toast = useToast();
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
@@ -66,15 +70,18 @@ const LeaveHistory = () => {
   };
 
   const handleCancel = async (id) => {
-    if (!window.confirm("คุณต้องการยกเลิกคำขอลานี้หรือไม่?")) return;
+    const confirmed = await toast.confirm("คุณต้องการยกเลิกคำขอลานี้หรือไม่?");
+    if (!confirmed) return;
     try {
       await leaveRequestsAPI.cancel(id);
       setRequests((prev) =>
-        prev.map((r) => (r._id === id ? { ...r, status: "cancelled" } : r))
+        prev.map((r) =>
+          (r.id || r._id) === id ? { ...r, status: "cancelled" } : r
+        )
       );
-      alert("ยกเลิกคำขอลาเรียบร้อยแล้ว");
+      toast.success("ยกเลิกคำขอลาเรียบร้อยแล้ว");
     } catch (error) {
-      alert(error.response?.data?.message || "เกิดข้อผิดพลาด");
+      toast.error(error.response?.data?.message || "เกิดข้อผิดพลาด");
     }
   };
 
@@ -92,12 +99,15 @@ const LeaveHistory = () => {
     e.preventDefault();
     setProcessing(true);
     try {
-      await leaveRequestsAPI.update(editModal.request._id, editForm);
+      await leaveRequestsAPI.update(
+        editModal.request.id || editModal.request._id,
+        editForm
+      );
       fetchRequests();
       setEditModal({ open: false, request: null });
-      alert("อัปเดตคำขอลาเรียบร้อยแล้ว");
+      toast.success("อัปเดตคำขอลาเรียบร้อยแล้ว");
     } catch (error) {
-      alert(error.response?.data?.message || "เกิดข้อผิดพลาด");
+      toast.error(error.response?.data?.message || "เกิดข้อผิดพลาด");
     } finally {
       setProcessing(false);
     }
@@ -263,7 +273,7 @@ const LeaveHistory = () => {
         ) : (
           <div className="history-grid">
             {filteredRequests.map((request) => (
-              <div key={request._id} className="history-card">
+              <div key={request.id || request._id} className="history-card">
                 <div className="card-header">
                   <div className="leave-type-info">
                     <span className="type-icon">
@@ -289,6 +299,12 @@ const LeaveHistory = () => {
                       <span className="date-label">สิ้นสุด</span>
                       <span className="date-value">
                         {formatDate(request.endDate)}
+                        {(request.timeSlot === "morning" ||
+                          request.timeSlot === "afternoon") && (
+                          <span className="time-slot-badge">
+                            ({request.timeSlot === "morning" ? "เช้า" : "บ่าย"})
+                          </span>
+                        )}
                       </span>
                     </div>
                   </div>
@@ -307,12 +323,21 @@ const LeaveHistory = () => {
                       </span>
                       <div className="attachments-list">
                         {request.attachments.map((file, idx) => {
-                          const fileName = file.split("/").pop();
+                          // Handle both Sequelize object and Mongoose string formats
+                          const filePath =
+                            typeof file === "string" ? file : file.filePath;
+                          const fileName =
+                            typeof file === "string"
+                              ? file.split("/").pop()
+                              : file.fileName ||
+                                filePath?.split("/").pop() ||
+                                "ไฟล์แนบ";
+
                           return (
                             <button
                               key={idx}
                               type="button"
-                              onClick={() => handlePreview(file)}
+                              onClick={() => handlePreview(filePath)}
                               className="attachment-link"
                             >
                               <FaFileAlt /> {fileName}
@@ -332,40 +357,41 @@ const LeaveHistory = () => {
                 </div>
 
                 <div className="card-footer">
-                  <span className="created-date">
-                    ยื่นเมื่อ {formatDate(request.createdAt)}
-                  </span>
-                  
-                  {/* ปุ่มดาวน์โหลด PDF */}
-                  <button
-                    className="pdf-btn"
-                    onClick={() => handleDownloadPDF(request)}
-                    title="ดาวน์โหลดใบลา PDF"
-                  >
-                    <FaFilePdf /> ใบลา
-                  </button>
-
+                  <div className="footer-row">
+                    <span className="created-date">
+                      ยื่นเมื่อ {formatDate(request.createdAt)}
+                    </span>
+                    <div className="footer-right">
+                      <button
+                        className="pdf-btn"
+                        onClick={() => handleDownloadPDF(request)}
+                        title="ดาวน์โหลดใบลา PDF"
+                      >
+                        <FaFilePdf /> ใบลา
+                      </button>
+                      {request.approver && (
+                        <span className="approver">
+                          โดย {request.approver.firstName}{" "}
+                          {request.approver.lastName}
+                        </span>
+                      )}
+                    </div>
+                  </div>
                   {request.status === "pending" && (
-                    <div className="action-buttons">
+                    <div className="action-row">
                       <button
                         className="edit-btn"
                         onClick={() => openEditModal(request)}
                       >
-                        ✏️ แก้ไข
+                        <FaEdit /> แก้ไข
                       </button>
                       <button
                         className="cancel-btn"
-                        onClick={() => handleCancel(request._id)}
+                        onClick={() => handleCancel(request.id || request._id)}
                       >
-                        ❌ ยกเลิก
+                        <FaTimes /> ยกเลิก
                       </button>
                     </div>
-                  )}
-                  {request.approvedBy && (
-                    <span className="approver">
-                      โดย {request.approvedBy.firstName}{" "}
-                      {request.approvedBy.lastName}
-                    </span>
                   )}
                 </div>
               </div>

@@ -1,5 +1,5 @@
 const jwt = require("jsonwebtoken");
-const User = require("../models/User");
+const { User, LeaveBalance, Department } = require("../models");
 
 const protect = async (req, res, next) => {
   let token;
@@ -11,7 +11,26 @@ const protect = async (req, res, next) => {
     try {
       token = req.headers.authorization.split(" ")[1];
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      req.user = await User.findById(decoded.id).select("-password");
+
+      // Find user with associations using Sequelize
+      req.user = await User.findByPk(decoded.id, {
+        attributes: { exclude: ["password"] },
+        include: [
+          {
+            model: LeaveBalance,
+            as: "leaveBalance",
+          },
+          {
+            model: Department,
+            as: "department",
+          },
+        ],
+      });
+
+      if (!req.user) {
+        return res.status(401).json({ message: "User not found" });
+      }
+
       next();
     } catch (error) {
       console.error(error);
@@ -33,10 +52,7 @@ const admin = (req, res, next) => {
 };
 
 const supervisor = (req, res, next) => {
-  if (
-    req.user &&
-    (req.user.role === "supervisor" || req.user.role === "admin")
-  ) {
+  if (req.user && (req.user.role === "head" || req.user.role === "admin")) {
     next();
   } else {
     res.status(403).json({ message: "Not authorized as supervisor" });

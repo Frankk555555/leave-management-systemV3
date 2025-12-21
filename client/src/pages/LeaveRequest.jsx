@@ -37,6 +37,7 @@ const LeaveRequest = () => {
     ceremonyDate: "",
     hasMedicalCertificate: false,
     isLongTermSick: false,
+    timeSlot: "full", // full, morning, afternoon
   });
   const [files, setFiles] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -76,6 +77,14 @@ const LeaveRequest = () => {
     const start = new Date(formData.startDate);
     const end = new Date(formData.endDate);
     if (end < start) return 0;
+
+    // เช็คว่าลาครึ่งวันหรือไม่
+    if (
+      formData.startDate === formData.endDate &&
+      (formData.timeSlot === "morning" || formData.timeSlot === "afternoon")
+    ) {
+      return 0.5;
+    }
 
     // ถ้าเป็นประเภทลาที่นับเฉพาะวันทำการ
     if (WORKING_DAYS_ONLY.includes(formData.leaveType)) {
@@ -136,6 +145,13 @@ const LeaveRequest = () => {
           formData.hasMedicalCertificate
         );
         formDataToSend.append("isLongTermSick", formData.isLongTermSick);
+      }
+
+      // Add timeSlot
+      if (formData.startDate === formData.endDate) {
+        formDataToSend.append("timeSlot", formData.timeSlot);
+      } else {
+        formDataToSend.append("timeSlot", "full");
       }
 
       files.forEach((file) => {
@@ -392,6 +408,59 @@ const LeaveRequest = () => {
                 </div>
               </div>
             </div>
+
+            {/* Time Slot Selection (Shows only when start date == end date) */}
+            {formData.startDate &&
+              formData.endDate &&
+              formData.startDate === formData.endDate && (
+                <div className="form-section">
+                  <h3>ช่วงเวลา</h3>
+                  <div className="time-slot-options">
+                    <label
+                      className={`time-slot-card ${
+                        formData.timeSlot === "full" ? "selected" : ""
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="timeSlot"
+                        value="full"
+                        checked={formData.timeSlot === "full"}
+                        onChange={handleChange}
+                      />
+                      <span>เต็มวัน (1 วัน)</span>
+                    </label>
+                    <label
+                      className={`time-slot-card ${
+                        formData.timeSlot === "morning" ? "selected" : ""
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="timeSlot"
+                        value="morning"
+                        checked={formData.timeSlot === "morning"}
+                        onChange={handleChange}
+                      />
+                      <span>ครึ่งเช้า (0.5 วัน)</span>
+                    </label>
+                    <label
+                      className={`time-slot-card ${
+                        formData.timeSlot === "afternoon" ? "selected" : ""
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="timeSlot"
+                        value="afternoon"
+                        checked={formData.timeSlot === "afternoon"}
+                        onChange={handleChange}
+                      />
+                      <span>ครึ่งบ่าย (0.5 วัน)</span>
+                    </label>
+                  </div>
+                </div>
+              )}
 
             <div className="form-section">
               <h3>เหตุผลการลา</h3>

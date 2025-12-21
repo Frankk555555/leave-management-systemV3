@@ -11,7 +11,22 @@ import {
 } from "chart.js";
 import { Bar, Doughnut } from "react-chartjs-2";
 import { reportsAPI } from "../services/api";
+import { useToast } from "../components/common/Toast";
 import Navbar from "../components/common/Navbar";
+import {
+  FaChartBar,
+  FaFileExcel,
+  FaFilePdf,
+  FaSyncAlt,
+  FaFileAlt,
+  FaCalendarAlt,
+  FaUsers,
+  FaCheckCircle,
+  FaChartLine,
+  FaHospital,
+  FaClipboardList,
+  FaBuilding,
+} from "react-icons/fa";
 import "./Reports.css";
 
 ChartJS.register(
@@ -25,6 +40,7 @@ ChartJS.register(
 );
 
 const Reports = () => {
+  const toast = useToast();
   const [statistics, setStatistics] = useState(null);
   const [loading, setLoading] = useState(true);
   const [year, setYear] = useState(new Date().getFullYear());
@@ -58,8 +74,9 @@ const Reports = () => {
       document.body.appendChild(link);
       link.click();
       link.remove();
+      toast.success("ส่งออกไฟล์ Excel เรียบร้อยแล้ว");
     } catch (error) {
-      alert("เกิดข้อผิดพลาดในการส่งออกไฟล์");
+      toast.error("เกิดข้อผิดพลาดในการส่งออกไฟล์");
     } finally {
       setExporting(false);
     }
@@ -76,24 +93,28 @@ const Reports = () => {
       document.body.appendChild(link);
       link.click();
       link.remove();
+      toast.success("ส่งออกไฟล์ PDF เรียบร้อยแล้ว");
     } catch (error) {
-      alert("เกิดข้อผิดพลาดในการส่งออกไฟล์");
+      toast.error("เกิดข้อผิดพลาดในการส่งออกไฟล์");
     } finally {
       setExporting(false);
     }
   };
 
   const handleResetYearly = async () => {
-    if (!window.confirm("คุณแน่ใจหรือไม่ที่จะรีเซ็ตวันลาของบุคลากรทุกคน?"))
-      return;
+    const confirmed = await toast.confirm(
+      "คุณแน่ใจหรือไม่ที่จะรีเซ็ตวันลาของบุคลากรทุกคน?",
+      "ยืนยันการรีเซ็ตวันลา"
+    );
+    if (!confirmed) return;
     setResetting(true);
     try {
       const response = await reportsAPI.resetYearly();
-      alert(
-        `${response.data.message}\nอัปเดตแล้ว ${response.data.updatedCount} คน`
+      toast.success(
+        `${response.data.message} อัปเดตแล้ว ${response.data.updatedCount} คน`
       );
     } catch (error) {
-      alert("เกิดข้อผิดพลาด");
+      toast.error("เกิดข้อผิดพลาด");
     } finally {
       setResetting(false);
     }
@@ -183,7 +204,9 @@ const Reports = () => {
       <div className="reports-page">
         <div className="page-header">
           <div>
-            <h1>📊 รายงานและสถิติ</h1>
+            <h1>
+              <FaChartBar style={{ marginRight: "10px" }} /> รายงานและสถิติ
+            </h1>
             <p>ภาพรวมการลาของบุคลากรในองค์กร</p>
           </div>
           <div className="header-actions">
@@ -206,49 +229,57 @@ const Reports = () => {
               onClick={handleExportExcel}
               disabled={exporting}
             >
-              📄 Excel
+              <FaFileExcel style={{ marginRight: "4px" }} /> Excel
             </button>
             <button
               className="export-btn pdf"
               onClick={handleExportPDF}
               disabled={exporting}
             >
-              📕 PDF
+              <FaFilePdf style={{ marginRight: "4px" }} /> PDF
             </button>
             <button
               className="reset-btn"
               onClick={handleResetYearly}
               disabled={resetting}
             >
-              🔄 รีเซ็ตวันลา
+              <FaSyncAlt style={{ marginRight: "4px" }} /> รีเซ็ตวันลา
             </button>
           </div>
         </div>
 
         <div className="stats-grid">
           <div className="stat-card">
-            <span className="stat-icon">📝</span>
+            <span className="stat-icon">
+              <FaFileAlt size={24} />
+            </span>
             <div className="stat-info">
               <h3>{statistics?.totalRequests || 0}</h3>
               <p>คำขอลาทั้งหมด</p>
             </div>
           </div>
           <div className="stat-card">
-            <span className="stat-icon">📅</span>
+            <span className="stat-icon">
+              <FaCalendarAlt size={24} />
+            </span>
             <div className="stat-info">
               <h3>{statistics?.totalDays || 0}</h3>
               <p>วันลาทั้งหมด</p>
             </div>
           </div>
           <div className="stat-card">
-            <span className="stat-icon">👥</span>
+            <span className="stat-icon">
+              <FaUsers size={24} />
+            </span>
             <div className="stat-info">
               <h3>{statistics?.totalEmployees || 0}</h3>
               <p>บุคลากรในระบบ</p>
             </div>
           </div>
           <div className="stat-card">
-            <span className="stat-icon">✅</span>
+            <span className="stat-icon">
+              <FaCheckCircle size={24} />
+            </span>
             <div className="stat-info">
               <h3>{statistics?.byStatus?.approved || 0}</h3>
               <p>อนุมัติแล้ว</p>
@@ -258,7 +289,9 @@ const Reports = () => {
 
         <div className="charts-grid">
           <div className="chart-card">
-            <h3>📈 สถิติการลารายเดือน</h3>
+            <h3>
+              <FaChartLine style={{ marginRight: "8px" }} /> สถิติการลารายเดือน
+            </h3>
             <div className="chart-container">
               <Bar
                 data={monthlyChartData}
@@ -277,7 +310,9 @@ const Reports = () => {
           </div>
 
           <div className="chart-card small">
-            <h3>🏥 ประเภทการลา</h3>
+            <h3>
+              <FaHospital style={{ marginRight: "8px" }} /> ประเภทการลา
+            </h3>
             <div className="chart-container doughnut">
               <Doughnut
                 data={typeChartData}
@@ -293,7 +328,9 @@ const Reports = () => {
           </div>
 
           <div className="chart-card small">
-            <h3>📋 สถานะคำขอ</h3>
+            <h3>
+              <FaClipboardList style={{ marginRight: "8px" }} /> สถานะคำขอ
+            </h3>
             <div className="chart-container doughnut">
               <Doughnut
                 data={statusChartData}
@@ -312,7 +349,9 @@ const Reports = () => {
         {statistics?.byDepartment &&
           Object.keys(statistics.byDepartment).length > 0 && (
             <div className="department-table-card">
-              <h3>🏢 การลาแยกตามแผนก</h3>
+              <h3>
+                <FaBuilding style={{ marginRight: "8px" }} /> การลาแยกตามแผนก
+              </h3>
               <table className="department-table">
                 <thead>
                   <tr>

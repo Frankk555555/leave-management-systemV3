@@ -1,6 +1,5 @@
-const LeaveRequest = require("../models/LeaveRequest");
-const User = require("../models/User");
-const Holiday = require("../models/Holiday");
+const { LeaveRequest, User, Holiday, Department } = require("../models");
+const { Op } = require("sequelize");
 
 // @desc    Get weekly leave report for n8n
 // @route   GET /api/webhooks/weekly-report
@@ -34,15 +33,47 @@ const getWeeklyReport = async (req, res) => {
     }
 
     // Get leave requests for the period
-    const leaveRequests = await LeaveRequest.find({
-      $or: [
-        { startDate: { $gte: startDate, $lte: endDate } },
-        { endDate: { $gte: startDate, $lte: endDate } },
-        { startDate: { $lte: startDate }, endDate: { $gte: endDate } },
+    const leaveRequests = await LeaveRequest.findAll({
+      where: {
+        [Op.or]: [
+          {
+            startDate: {
+              [Op.between]: [startDate, endDate],
+            },
+          },
+          {
+            endDate: {
+              [Op.between]: [startDate, endDate],
+            },
+          },
+          {
+            [Op.and]: [
+              { startDate: { [Op.lte]: startDate } },
+              { endDate: { [Op.gte]: endDate } },
+            ],
+          },
+        ],
+      },
+      include: [
+        {
+          model: User,
+          as: "user",
+          attributes: ["id", "firstName", "lastName", "email"],
+          include: [
+            {
+              model: Department,
+              as: "department",
+              attributes: ["name"],
+            },
+          ],
+        },
+        {
+          model: User,
+          as: "approver",
+          attributes: ["id", "firstName", "lastName"],
+        },
       ],
-    })
-      .populate("employee", "firstName lastName department email")
-      .populate("approvedBy", "firstName lastName");
+    });
 
     // Get statistics
     const stats = {
@@ -58,18 +89,31 @@ const getWeeklyReport = async (req, res) => {
       sick: leaveRequests.filter((r) => r.leaveType === "sick").length,
       personal: leaveRequests.filter((r) => r.leaveType === "personal").length,
       vacation: leaveRequests.filter((r) => r.leaveType === "vacation").length,
+      maternity: leaveRequests.filter((r) => r.leaveType === "maternity")
+        .length,
+      paternity: leaveRequests.filter((r) => r.leaveType === "paternity")
+        .length,
+      childcare: leaveRequests.filter((r) => r.leaveType === "childcare")
+        .length,
+      ordination: leaveRequests.filter((r) => r.leaveType === "ordination")
+        .length,
+      military: leaveRequests.filter((r) => r.leaveType === "military").length,
     };
 
     // Count by department
     const byDepartment = {};
     leaveRequests.forEach((r) => {
-      const dept = r.employee?.department || "ไม่ระบุ";
+      const dept = r.user?.department?.name || "ไม่ระบุ";
       byDepartment[dept] = (byDepartment[dept] || 0) + 1;
     });
 
     // Get holidays this week
-    const holidays = await Holiday.find({
-      date: { $gte: startDate, $lte: endDate },
+    const holidays = await Holiday.findAll({
+      where: {
+        date: {
+          [Op.between]: [startDate, endDate],
+        },
+      },
     });
 
     // Total days on leave
@@ -100,14 +144,24 @@ const getWeeklyReport = async (req, res) => {
         date: new Date(h.date).toLocaleDateString("th-TH"),
       })),
       leaveDetails: leaveRequests.map((r) => ({
-        employee: `${r.employee?.firstName} ${r.employee?.lastName}`,
-        department: r.employee?.department,
+        employee: `${r.user?.firstName || ""} ${r.user?.lastName || ""}`,
+        department: r.user?.department?.name || "ไม่ระบุ",
         type:
           r.leaveType === "sick"
             ? "ลาป่วย"
             : r.leaveType === "personal"
             ? "ลากิจ"
-            : "ลาพักร้อน",
+            : r.leaveType === "vacation"
+            ? "ลาพักร้อน"
+            : r.leaveType === "maternity"
+            ? "ลาคลอดบุตร"
+            : r.leaveType === "paternity"
+            ? "ลาช่วยภรรยาคลอด"
+            : r.leaveType === "childcare"
+            ? "ลาเลี้ยงดูบุตร"
+            : r.leaveType === "ordination"
+            ? "ลาอุปสมบท/ฮัจย์"
+            : "ลาตรวจเลือก",
         startDate: new Date(r.startDate).toLocaleDateString("th-TH"),
         endDate: new Date(r.endDate).toLocaleDateString("th-TH"),
         totalDays: r.totalDays,
@@ -147,8 +201,13 @@ const generateTextSummary = (stats, byType, byDepartment, totalDays, total) => {
 
   summary += `🏥 แยกตามประเภท:\n`;
   summary += `- ลาป่วย: ${byType.sick} รายการ\n`;
-  summary += `- ลากิจ: ${byType.personal} รายการ\n`;
-  summary += `- ลาพักร้อน: ${byType.vacation} รายการ\n\n`;
+  summary += `- ลากิจส่วนตัว: ${byType.personal} รายการ\n`;
+  summary += `- ลาพักผ่อน: ${byType.vacation} รายการ\n`;
+  summary += `- ลาคลอดบุตร: ${byType.maternity} รายการ\n`;
+  summary += `- ลาช่วยภรรยาคลอด: ${byType.paternity} รายการ\n`;
+  summary += `- ลาเลี้ยงดูบุตร: ${byType.childcare} รายการ\n`;
+  summary += `- ลาอุปสมบท/ฮัจย์: ${byType.ordination} รายการ\n`;
+  summary += `- ลาตรวจเลือก: ${byType.military} รายการ\n\n`;
 
   summary += `🏢 แยกตามแผนก:\n`;
   Object.entries(byDepartment).forEach(([dept, count]) => {

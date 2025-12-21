@@ -1,116 +1,95 @@
-const mongoose = require("mongoose");
+// ============================================
+// LeaveRequest Model (Sequelize)
+// ============================================
 
-const leaveRequestSchema = new mongoose.Schema(
+const { DataTypes } = require("sequelize");
+const { sequelize } = require("../config/database");
+
+const LeaveRequest = sequelize.define(
+  "LeaveRequest",
   {
-    employee: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      required: true,
+    id: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true,
+    },
+    userId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      field: "user_id",
     },
     leaveType: {
-      type: String,
-      enum: [
-        "sick", // ลาป่วย
-        "personal", // ลากิจส่วนตัว
-        "vacation", // ลาพักผ่อน
-        "maternity", // ลาคลอดบุตร
-        "paternity", // ลาช่วยภรรยาคลอด
-        "childcare", // ลากิจเลี้ยงดูบุตร
-        "ordination", // ลาอุปสมบท/ฮัจย์
-        "military", // ลาตรวจเลือก/เตรียมพล
-      ],
-      required: true,
+      type: DataTypes.STRING(50),
+      allowNull: false,
+      field: "leave_type",
+      validate: {
+        isIn: [
+          [
+            "sick",
+            "personal",
+            "vacation",
+            "maternity",
+            "paternity",
+            "childcare",
+            "ordination",
+            "military",
+          ],
+        ],
+      },
     },
     startDate: {
-      type: Date,
-      required: true,
+      type: DataTypes.DATEONLY,
+      allowNull: false,
+      field: "start_date",
     },
     endDate: {
-      type: Date,
-      required: true,
+      type: DataTypes.DATEONLY,
+      allowNull: false,
+      field: "end_date",
     },
     totalDays: {
-      type: Number,
-      required: true,
+      type: DataTypes.FLOAT,
+      allowNull: false,
+      field: "total_days",
     },
-    workingDays: {
-      type: Number,
-      default: 0, // จำนวนวันทำการจริง (หักวันหยุด)
+    timeSlot: {
+      type: DataTypes.ENUM("full", "morning", "afternoon"),
+      defaultValue: "full",
+      field: "time_slot",
     },
     reason: {
-      type: String,
-      required: true,
+      type: DataTypes.TEXT,
     },
-    attachments: [
-      {
-        type: String,
-      },
-    ],
-    // สำหรับลาป่วย - ต้องมีใบรับรองแพทย์หรือไม่
-    hasMedicalCertificate: {
-      type: Boolean,
-      default: false,
+    contactAddress: {
+      type: DataTypes.TEXT,
+      field: "contact_address",
     },
-    // สำหรับลาป่วยรักษานาน
-    isLongTermSick: {
-      type: Boolean,
-      default: false,
-    },
-    // สำหรับลาช่วยภรรยาคลอด - วันที่ภรรยาคลอด
-    childBirthDate: {
-      type: Date,
-      default: null,
-    },
-    // สำหรับลาอุปสมบท/ฮัจย์ - วันที่จะอุปสมบท/เดินทาง
-    ceremonyDate: {
-      type: Date,
-      default: null,
-    },
-    // เป็นการลาที่ได้รับเงินเดือนหรือไม่
-    isPaidLeave: {
-      type: Boolean,
-      default: true,
-    },
-    // ปีงบประมาณที่ใช้สิทธิ์
-    fiscalYear: {
-      type: Number,
-      default: null,
+    contactPhone: {
+      type: DataTypes.STRING(20),
+      field: "contact_phone",
     },
     status: {
-      type: String,
-      enum: ["pending", "approved", "rejected", "cancelled"],
-      default: "pending",
+      type: DataTypes.ENUM("pending", "approved", "rejected"),
+      defaultValue: "pending",
     },
     approvedBy: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      default: null,
+      type: DataTypes.INTEGER,
+      field: "approved_by",
     },
-    approvalDate: {
-      type: Date,
-      default: null,
+    approvedAt: {
+      type: DataTypes.DATE,
+      field: "approved_at",
     },
-    approvalNote: {
-      type: String,
-      default: "",
+    rejectionReason: {
+      type: DataTypes.TEXT,
+      field: "rejection_reason",
     },
   },
   {
+    tableName: "leave_requests",
     timestamps: true,
+    underscored: true,
   }
 );
 
-// Calculate fiscal year before saving (Oct 1 - Sep 30)
-leaveRequestSchema.pre("save", function (next) {
-  if (this.startDate) {
-    const date = new Date(this.startDate);
-    const month = date.getMonth(); // 0-11
-    const year = date.getFullYear();
-    // If month is Oct-Dec (9-11), fiscal year is next year
-    // If month is Jan-Sep (0-8), fiscal year is current year
-    this.fiscalYear = month >= 9 ? year + 1 : year;
-  }
-  next();
-});
-
-module.exports = mongoose.model("LeaveRequest", leaveRequestSchema);
+module.exports = LeaveRequest;

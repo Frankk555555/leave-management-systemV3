@@ -213,55 +213,112 @@
 
 .card-footer {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
+  gap: 0.75rem;
   padding: 0.75rem 1.25rem;
   background: #f7fafc;
   border-top: 1px solid #e2e8f0;
   font-size: 0.8rem;
   color: #a0aec0;
+}
+
+.footer-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   flex-wrap: wrap;
   gap: 0.5rem;
+}
+
+.footer-right {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.action-row {
+  display: flex;
+  justify-content: flex-end; /* ชิดขวา */
+  gap: 0.75rem;
+  padding-top: 0.75rem; /* เพิ่มระยะห่าง */
+  margin-top: 0.25rem;
+  border-top: 1px dashed #e2e8f0;
 }
 
 .approver {
   color: #667eea;
 }
 
-.action-buttons {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.action-buttons .edit-btn,
-.action-buttons .cancel-btn {
-  padding: 0.4rem 0.75rem;
+/* Action Buttons in Footer */
+.edit-btn,
+.cancel-btn,
+.pdf-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 1rem;
+  flex-shrink: 0;
+  white-space: nowrap;
   border: none;
   border-radius: 8px;
-  font-size: 0.75rem;
-  font-weight: 600;
+  font-size: 0.85rem;
+  font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  margin-right: 0.5rem; /* Explicit spacing */
 }
 
-.action-buttons .edit-btn {
+.edit-btn:last-child,
+.cancel-btn:last-child,
+.pdf-btn:last-child {
+  margin-right: 0;
+}
+
+.edit-btn {
   background: linear-gradient(135deg, #667eea, #764ba2);
+  border: none;
   color: white;
 }
 
-.action-buttons .edit-btn:hover {
+.edit-btn:hover {
+  background: linear-gradient(135deg, #5a67d8, #6b46c1);
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
 }
 
-.action-buttons .cancel-btn {
-  background: linear-gradient(135deg, #f56565, #e53e3e);
+.cancel-btn {
+  background: linear-gradient(135deg, #f56565, #c53030);
+  border: none;
   color: white;
 }
 
-.action-buttons .cancel-btn:hover {
+.cancel-btn:hover {
+  background: linear-gradient(135deg, #e53e3e, #9b2c2c);
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(245, 101, 101, 0.4);
+}
+
+/* PDF Download Button */
+.pdf-btn {
+  background: white;
+  border: 1px solid #e2e8f0;
+  color: #e53e3e;
+}
+
+.pdf-btn:hover {
+  background: #fff5f5;
+  border-color: #fc8181;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px rgba(229, 62, 62, 0.1);
+}
+
+.footer-actions {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: max-content;
+  gap: 0.75rem;
+  align-items: center;
 }
 
 .form-row {
@@ -316,24 +373,5 @@
   box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
 }
 
-/* PDF Download Button */
-.pdf-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  padding: 0.4rem 0.75rem;
-  background: linear-gradient(135deg, #dc2626, #b91c1c);
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-}
 
-.pdf-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.4);
-}
 

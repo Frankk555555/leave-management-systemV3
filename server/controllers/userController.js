@@ -1,13 +1,29 @@
-const User = require("../models/User");
+const { User, LeaveBalance, Department } = require("../models");
+const { Op } = require("sequelize");
 
 // @desc    Get all users
 // @route   GET /api/users
 // @access  Private/Admin
 const getUsers = async (req, res) => {
   try {
-    const users = await User.find({})
-      .select("-password")
-      .populate("supervisor", "firstName lastName email");
+    const users = await User.findAll({
+      attributes: { exclude: ["password"] },
+      include: [
+        {
+          model: User,
+          as: "supervisor",
+          attributes: ["id", "firstName", "lastName", "email"],
+        },
+        {
+          model: LeaveBalance,
+          as: "leaveBalance",
+        },
+        {
+          model: Department,
+          as: "department",
+        },
+      ],
+    });
     res.json(users);
   } catch (error) {
     console.error(error);
@@ -20,9 +36,24 @@ const getUsers = async (req, res) => {
 // @access  Private/Admin
 const getUserById = async (req, res) => {
   try {
-    const user = await User.findById(req.params.id)
-      .select("-password")
-      .populate("supervisor", "firstName lastName email");
+    const user = await User.findByPk(req.params.id, {
+      attributes: { exclude: ["password"] },
+      include: [
+        {
+          model: User,
+          as: "supervisor",
+          attributes: ["id", "firstName", "lastName", "email"],
+        },
+        {
+          model: LeaveBalance,
+          as: "leaveBalance",
+        },
+        {
+          model: Department,
+          as: "department",
+        },
+      ],
+    });
 
     if (user) {
       res.json(user);
@@ -46,41 +77,78 @@ const createUser = async (req, res) => {
       lastName,
       email,
       password,
-      department,
+      departmentId,
       position,
       role,
-      supervisor,
+      supervisorId,
       leaveBalance,
     } = req.body;
 
-    const userExists = await User.findOne({ $or: [{ email }, { employeeId }] });
+    // Handle empty strings for optional fields
+    const safeDepartmentId = departmentId === "" ? null : departmentId;
+    const safeSupervisorId = supervisorId === "" ? null : supervisorId;
+
+    // Check if user exists
+    const userExists = await User.findOne({
+      where: {
+        [Op.or]: [{ email }, { employeeId }],
+      },
+    });
+
     if (userExists) {
       return res.status(400).json({ message: "User already exists" });
     }
 
+    // Create user
     const user = await User.create({
       employeeId,
       firstName,
       lastName,
       email,
-      password,
-      department,
+      password, // Will be hashed by hook
+      departmentId: safeDepartmentId,
       position,
       role: role || "employee",
-      supervisor: supervisor || null,
-      leaveBalance: leaveBalance || { sick: 30, personal: 10, vacation: 10 },
+      supervisorId: safeSupervisorId,
+    });
+
+    // Create leave balance
+    await LeaveBalance.create({
+      userId: user.id,
+      sick: leaveBalance?.sick || 60,
+      personal: leaveBalance?.personal || 45,
+      vacation: leaveBalance?.vacation || 10,
+      maternity: leaveBalance?.maternity || 90,
+      paternity: leaveBalance?.paternity || 15,
+      childcare: leaveBalance?.childcare || 150,
+      ordination: leaveBalance?.ordination || 120,
+      military: leaveBalance?.military || 60,
+    });
+
+    // Fetch user with associations
+    const userWithBalance = await User.findByPk(user.id, {
+      include: [
+        {
+          model: LeaveBalance,
+          as: "leaveBalance",
+        },
+        {
+          model: Department,
+          as: "department",
+        },
+      ],
     });
 
     res.status(201).json({
-      _id: user._id,
+      id: user.id,
       employeeId: user.employeeId,
       firstName: user.firstName,
       lastName: user.lastName,
       email: user.email,
-      department: user.department,
+      department: userWithBalance.department,
       position: user.position,
       role: user.role,
-      leaveBalance: user.leaveBalance,
+      leaveBalance: userWithBalance.leaveBalance,
     });
   } catch (error) {
     console.error(error);
@@ -93,7 +161,14 @@ const createUser = async (req, res) => {
 // @access  Private/Admin
 const updateUser = async (req, res) => {
   try {
-    const user = await User.findById(req.params.id);
+    const user = await User.findByPk(req.params.id, {
+      include: [
+        {
+          model: LeaveBalance,
+          as: "leaveBalance",
+        },
+      ],
+    });
 
     if (!user) {
       return res.status(404).json({ message: "User not found" });
@@ -103,38 +178,50 @@ const updateUser = async (req, res) => {
       firstName,
       lastName,
       email,
-      department,
+      departmentId,
       position,
       role,
-      supervisor,
+      supervisorId,
       leaveBalance,
-      isActive,
     } = req.body;
 
-    user.firstName = firstName || user.firstName;
-    user.lastName = lastName || user.lastName;
-    user.email = email || user.email;
-    user.department = department || user.department;
-    user.position = position || user.position;
-    user.role = role || user.role;
-    user.supervisor = supervisor !== undefined ? supervisor : user.supervisor;
-    user.leaveBalance = leaveBalance || user.leaveBalance;
-    user.isActive = isActive !== undefined ? isActive : user.isActive;
+    // Handle empty strings for optional fields
+    const safeDepartmentId = departmentId === "" ? null : departmentId;
+    const safeSupervisorId = supervisorId === "" ? null : supervisorId;
 
-    const updatedUser = await user.save();
-
-    res.json({
-      _id: updatedUser._id,
-      employeeId: updatedUser.employeeId,
-      firstName: updatedUser.firstName,
-      lastName: updatedUser.lastName,
-      email: updatedUser.email,
-      department: updatedUser.department,
-      position: updatedUser.position,
-      role: updatedUser.role,
-      leaveBalance: updatedUser.leaveBalance,
-      isActive: updatedUser.isActive,
+    // Update user fields
+    await user.update({
+      firstName: firstName || user.firstName,
+      lastName: lastName || user.lastName,
+      email: email || user.email,
+      departmentId:
+        safeDepartmentId !== undefined ? safeDepartmentId : user.departmentId,
+      position: position || user.position,
+      role: role || user.role,
+      supervisorId:
+        safeSupervisorId !== undefined ? safeSupervisorId : user.supervisorId,
     });
+
+    // Update leave balance if provided
+    if (leaveBalance && user.leaveBalance) {
+      await user.leaveBalance.update(leaveBalance);
+    }
+
+    // Fetch updated user with associations
+    const updatedUser = await User.findByPk(user.id, {
+      include: [
+        {
+          model: LeaveBalance,
+          as: "leaveBalance",
+        },
+        {
+          model: Department,
+          as: "department",
+        },
+      ],
+    });
+
+    res.json(updatedUser);
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server error", error: error.message });
@@ -146,13 +233,13 @@ const updateUser = async (req, res) => {
 // @access  Private/Admin
 const deleteUser = async (req, res) => {
   try {
-    const user = await User.findById(req.params.id);
+    const user = await User.findByPk(req.params.id);
 
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    await User.findByIdAndDelete(req.params.id);
+    await user.destroy();
     res.json({ message: "User removed" });
   } catch (error) {
     console.error(error);
@@ -165,9 +252,27 @@ const deleteUser = async (req, res) => {
 // @access  Private
 const getSupervisors = async (req, res) => {
   try {
-    const supervisors = await User.find({
-      role: { $in: ["supervisor", "admin"] },
-    }).select("_id employeeId firstName lastName email department");
+    const supervisors = await User.findAll({
+      where: {
+        role: {
+          [Op.in]: ["head", "admin"],
+        },
+      },
+      attributes: [
+        "id",
+        "employeeId",
+        "firstName",
+        "lastName",
+        "email",
+        "departmentId",
+      ],
+      include: [
+        {
+          model: Department,
+          as: "department",
+        },
+      ],
+    });
     res.json(supervisors);
   } catch (error) {
     console.error(error);

@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { notificationsAPI } from "../../services/api";
+import { useNavigate } from "react-router-dom";
 import "./NotificationBell.css";
 
 const NotificationBell = () => {
+  const navigate = useNavigate();
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
@@ -41,7 +43,7 @@ const NotificationBell = () => {
     try {
       await notificationsAPI.markAsRead(id);
       setNotifications((prev) =>
-        prev.map((n) => (n._id === id ? { ...n, isRead: true } : n))
+        prev.map((n) => ((n.id || n._id) === id ? { ...n, isRead: true } : n))
       );
       setUnreadCount((prev) => Math.max(0, prev - 1));
     } catch (error) {
@@ -56,6 +58,23 @@ const NotificationBell = () => {
       setUnreadCount(0);
     } catch (error) {
       console.error("Error marking all as read:", error);
+    }
+  };
+
+  const handleNotificationClick = async (notification) => {
+    if (!notification.isRead) {
+      await handleMarkAsRead(notification.id || notification._id);
+    }
+    setIsOpen(false);
+
+    // Navigate logic
+    if (notification.type === "leave_request") {
+      navigate("/approvals");
+    } else if (
+      notification.type === "approval" ||
+      notification.type === "rejection"
+    ) {
+      navigate("/leave-history");
     }
   };
 
@@ -117,13 +136,11 @@ const NotificationBell = () => {
             ) : (
               notifications.map((notification) => (
                 <div
-                  key={notification._id}
+                  key={notification.id || notification._id}
                   className={`notification-item ${
                     !notification.isRead ? "unread" : ""
                   }`}
-                  onClick={() =>
-                    !notification.isRead && handleMarkAsRead(notification._id)
-                  }
+                  onClick={() => handleNotificationClick(notification)}
                 >
                   <span className="notification-icon">
                     {getNotificationIcon(notification.type)}

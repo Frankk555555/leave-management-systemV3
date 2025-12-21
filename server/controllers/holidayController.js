@@ -1,4 +1,5 @@
-const Holiday = require("../models/Holiday");
+const { Holiday } = require("../models");
+const { Op } = require("sequelize");
 
 // @desc    Get all holidays
 // @route   GET /api/holidays
@@ -6,15 +7,20 @@ const Holiday = require("../models/Holiday");
 const getHolidays = async (req, res) => {
   try {
     const { year } = req.query;
-    let query = { isActive: true };
+    let where = {};
 
     if (year) {
       const startOfYear = new Date(year, 0, 1);
-      const endOfYear = new Date(year, 11, 31);
-      query.date = { $gte: startOfYear, $lte: endOfYear };
+      const endOfYear = new Date(year, 11, 31, 23, 59, 59);
+      where.date = {
+        [Op.between]: [startOfYear, endOfYear],
+      };
     }
 
-    const holidays = await Holiday.find(query).sort({ date: 1 });
+    const holidays = await Holiday.findAll({
+      where,
+      order: [["date", "ASC"]],
+    });
     res.json(holidays);
   } catch (error) {
     console.error(error);
@@ -47,22 +53,22 @@ const createHoliday = async (req, res) => {
 // @access  Private/Admin
 const updateHoliday = async (req, res) => {
   try {
-    const holiday = await Holiday.findById(req.params.id);
+    const holiday = await Holiday.findByPk(req.params.id);
 
     if (!holiday) {
       return res.status(404).json({ message: "Holiday not found" });
     }
 
-    const { name, date, description, isActive } = req.body;
+    const { name, date, description } = req.body;
 
-    holiday.name = name || holiday.name;
-    holiday.date = date || holiday.date;
-    holiday.description =
-      description !== undefined ? description : holiday.description;
-    holiday.isActive = isActive !== undefined ? isActive : holiday.isActive;
+    await holiday.update({
+      name: name || holiday.name,
+      date: date || holiday.date,
+      description:
+        description !== undefined ? description : holiday.description,
+    });
 
-    const updatedHoliday = await holiday.save();
-    res.json(updatedHoliday);
+    res.json(holiday);
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server error", error: error.message });
@@ -74,13 +80,13 @@ const updateHoliday = async (req, res) => {
 // @access  Private/Admin
 const deleteHoliday = async (req, res) => {
   try {
-    const holiday = await Holiday.findById(req.params.id);
+    const holiday = await Holiday.findByPk(req.params.id);
 
     if (!holiday) {
       return res.status(404).json({ message: "Holiday not found" });
     }
 
-    await Holiday.findByIdAndDelete(req.params.id);
+    await holiday.destroy();
     res.json({ message: "Holiday removed" });
   } catch (error) {
     console.error(error);
@@ -178,23 +184,34 @@ const initializeHolidays = async (req, res) => {
     ];
 
     for (const holiday of defaultHolidays) {
+      const holidayDate = new Date(holiday.date);
+      holidayDate.setHours(0, 0, 0, 0);
+
       const exists = await Holiday.findOne({
-        date: {
-          $gte: new Date(holiday.date.setHours(0, 0, 0, 0)),
-          $lt: new Date(holiday.date.setHours(23, 59, 59, 999)),
+        where: {
+          date: holidayDate,
         },
       });
+
       if (!exists) {
-        await Holiday.create(holiday);
+        await Holiday.create({
+          ...holiday,
+          date: holidayDate,
+        });
       }
     }
 
-    const holidays = await Holiday.find({
-      date: {
-        $gte: new Date(year, 0, 1),
-        $lte: new Date(year, 11, 31),
+    const startOfYear = new Date(year, 0, 1);
+    const endOfYear = new Date(year, 11, 31, 23, 59, 59);
+
+    const holidays = await Holiday.findAll({
+      where: {
+        date: {
+          [Op.between]: [startOfYear, endOfYear],
+        },
       },
-    }).sort({ date: 1 });
+      order: [["date", "ASC"]],
+    });
 
     res.json(holidays);
   } catch (error) {

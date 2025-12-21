@@ -1,14 +1,23 @@
-const Notification = require("../models/Notification");
+const { Notification, LeaveRequest, User } = require("../models");
+const { Op } = require("sequelize");
 
 // @desc    Get my notifications
 // @route   GET /api/notifications
 // @access  Private
 const getMyNotifications = async (req, res) => {
   try {
-    const notifications = await Notification.find({ user: req.user._id })
-      .populate("relatedLeave")
-      .sort({ createdAt: -1 })
-      .limit(50);
+    const notifications = await Notification.findAll({
+      where: { userId: req.user.id },
+      include: [
+        {
+          model: LeaveRequest,
+          as: "relatedLeave",
+          attributes: ["id", "leaveType", "startDate", "endDate", "status"],
+        },
+      ],
+      order: [["createdAt", "DESC"]],
+      limit: 50,
+    });
     res.json(notifications);
   } catch (error) {
     console.error(error);
@@ -21,9 +30,11 @@ const getMyNotifications = async (req, res) => {
 // @access  Private
 const getUnreadCount = async (req, res) => {
   try {
-    const count = await Notification.countDocuments({
-      user: req.user._id,
-      isRead: false,
+    const count = await Notification.count({
+      where: {
+        userId: req.user.id,
+        isRead: false,
+      },
     });
     res.json({ count });
   } catch (error) {
@@ -37,18 +48,17 @@ const getUnreadCount = async (req, res) => {
 // @access  Private
 const markAsRead = async (req, res) => {
   try {
-    const notification = await Notification.findById(req.params.id);
+    const notification = await Notification.findByPk(req.params.id);
 
     if (!notification) {
       return res.status(404).json({ message: "Notification not found" });
     }
 
-    if (notification.user.toString() !== req.user._id.toString()) {
+    if (notification.userId !== req.user.id) {
       return res.status(403).json({ message: "Not authorized" });
     }
 
-    notification.isRead = true;
-    await notification.save();
+    await notification.update({ isRead: true });
 
     res.json(notification);
   } catch (error) {
@@ -62,9 +72,14 @@ const markAsRead = async (req, res) => {
 // @access  Private
 const markAllAsRead = async (req, res) => {
   try {
-    await Notification.updateMany(
-      { user: req.user._id, isRead: false },
-      { isRead: true }
+    await Notification.update(
+      { isRead: true },
+      {
+        where: {
+          userId: req.user.id,
+          isRead: false,
+        },
+      }
     );
     res.json({ message: "All notifications marked as read" });
   } catch (error) {
@@ -78,17 +93,17 @@ const markAllAsRead = async (req, res) => {
 // @access  Private
 const deleteNotification = async (req, res) => {
   try {
-    const notification = await Notification.findById(req.params.id);
+    const notification = await Notification.findByPk(req.params.id);
 
     if (!notification) {
       return res.status(404).json({ message: "Notification not found" });
     }
 
-    if (notification.user.toString() !== req.user._id.toString()) {
+    if (notification.userId !== req.user.id) {
       return res.status(403).json({ message: "Not authorized" });
     }
 
-    await Notification.findByIdAndDelete(req.params.id);
+    await notification.destroy();
     res.json({ message: "Notification removed" });
   } catch (error) {
     console.error(error);

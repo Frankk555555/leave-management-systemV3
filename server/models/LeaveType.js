@@ -1,33 +1,59 @@
-const mongoose = require("mongoose");
+// ============================================
+// LeaveType Model (Sequelize)
+// ============================================
 
-const leaveTypeSchema = new mongoose.Schema(
+const { DataTypes } = require("sequelize");
+const { sequelize } = require("../config/database");
+
+const LeaveType = sequelize.define(
+  "LeaveType",
   {
+    id: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true,
+    },
     name: {
-      type: String,
-      required: true,
+      type: DataTypes.STRING(100),
+      allowNull: false,
     },
     code: {
-      type: String,
-      required: true,
+      type: DataTypes.STRING(50),
       unique: true,
-      enum: ["sick", "personal", "vacation"],
+      allowNull: false,
+      validate: {
+        isIn: [
+          [
+            "sick",
+            "personal",
+            "vacation",
+            "maternity",
+            "paternity",
+            "childcare",
+            "ordination",
+            "military",
+          ],
+        ],
+      },
     },
     description: {
-      type: String,
-      default: "",
+      type: DataTypes.TEXT,
     },
     defaultDays: {
-      type: Number,
-      required: true,
+      type: DataTypes.INTEGER,
+      field: "default_days",
     },
-    isActive: {
-      type: Boolean,
-      default: true,
+    requiresMedicalCert: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+      field: "requires_medical_cert",
     },
   },
   {
+    tableName: "leave_types",
     timestamps: true,
+    underscored: true,
   }
 );
 
-module.exports = mongoose.model("LeaveType", leaveTypeSchema);
+module.exports = LeaveType;

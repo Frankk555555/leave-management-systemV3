@@ -1,9 +1,20 @@
 import React, { useState, useEffect } from "react";
 import { usersAPI } from "../services/api";
+import { useToast } from "../components/common/Toast";
 import Navbar from "../components/common/Navbar";
+import {
+  FaUsers,
+  FaPlus,
+  FaEdit,
+  FaTrash,
+  FaHospital,
+  FaClipboardList,
+  FaUmbrellaBeach,
+} from "react-icons/fa";
 import "./UserManagement.css";
 
 const UserManagement = () => {
+  const toast = useToast();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
@@ -15,11 +26,20 @@ const UserManagement = () => {
     lastName: "",
     email: "",
     password: "",
-    department: "",
+    departmentId: "",
     position: "",
     role: "employee",
-    supervisor: "",
-    leaveBalance: { sick: 30, personal: 10, vacation: 10 },
+    supervisorId: "",
+    leaveBalance: {
+      sick: 60,
+      personal: 45,
+      vacation: 10,
+      maternity: 90,
+      paternity: 15,
+      childcare: 150,
+      ordination: 120,
+      military: 60,
+    },
   });
 
   useEffect(() => {
@@ -69,14 +89,19 @@ const UserManagement = () => {
         lastName: user.lastName,
         email: user.email,
         password: "",
-        department: user.department,
+        departmentId: user.departmentId || user.department?.id || "",
         position: user.position,
         role: user.role,
-        supervisor: user.supervisor?._id || "",
+        supervisorId: user.supervisorId || user.supervisor?.id || "",
         leaveBalance: user.leaveBalance || {
-          sick: 30,
-          personal: 10,
+          sick: 60,
+          personal: 45,
           vacation: 10,
+          maternity: 90,
+          paternity: 15,
+          childcare: 150,
+          ordination: 120,
+          military: 60,
         },
       });
     } else {
@@ -87,11 +112,20 @@ const UserManagement = () => {
         lastName: "",
         email: "",
         password: "",
-        department: "",
+        departmentId: "",
         position: "",
         role: "employee",
-        supervisor: "",
-        leaveBalance: { sick: 30, personal: 10, vacation: 10 },
+        supervisorId: "",
+        leaveBalance: {
+          sick: 60,
+          personal: 45,
+          vacation: 10,
+          maternity: 90,
+          paternity: 15,
+          childcare: 150,
+          ordination: 120,
+          military: 60,
+        },
       });
     }
     setModalOpen(true);
@@ -102,34 +136,40 @@ const UserManagement = () => {
     try {
       const dataToSend = { ...formData };
       if (!dataToSend.password) delete dataToSend.password;
-      if (!dataToSend.supervisor) dataToSend.supervisor = null;
+      if (!dataToSend.supervisorId) dataToSend.supervisorId = null;
 
       if (editingUser) {
-        await usersAPI.update(editingUser._id, dataToSend);
+        await usersAPI.update(editingUser.id || editingUser._id, dataToSend);
+        toast.success("แก้ไขข้อมูลบุคลากรเรียบร้อยแล้ว");
       } else {
         await usersAPI.create(dataToSend);
+        toast.success("เพิ่มบุคลากรเรียบร้อยแล้ว");
       }
       fetchUsers();
+      fetchSupervisors();
       setModalOpen(false);
     } catch (error) {
-      alert(error.response?.data?.message || "เกิดข้อผิดพลาด");
+      toast.error(error.response?.data?.message || "เกิดข้อผิดพลาด");
     }
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm("คุณต้องการลบบุคลากรนี้หรือไม่?")) return;
+    const confirmed = await toast.confirm("คุณต้องการลบบุคลากรนี้หรือไม่?");
+    if (!confirmed) return;
     try {
       await usersAPI.delete(id);
       fetchUsers();
+      fetchSupervisors();
+      toast.success("ลบบุคลากรเรียบร้อยแล้ว");
     } catch (error) {
-      alert(error.response?.data?.message || "เกิดข้อผิดพลาด");
+      toast.error(error.response?.data?.message || "เกิดข้อผิดพลาด");
     }
   };
 
   const getRoleName = (role) => {
     const roles = {
       admin: "ผู้ดูแลระบบ",
-      supervisor: "หัวหน้างาน",
+      head: "หัวหน้างาน",
       employee: "บุคลากร",
     };
     return roles[role] || role;
@@ -141,7 +181,7 @@ const UserManagement = () => {
         bg: "linear-gradient(135deg, #ff6b6b, #ee5a5a)",
         color: "white",
       },
-      supervisor: {
+      head: {
         bg: "linear-gradient(135deg, #667eea, #764ba2)",
         color: "white",
       },
@@ -175,11 +215,13 @@ const UserManagement = () => {
       <div className="user-management-page">
         <div className="page-header">
           <div>
-            <h1>👥 จัดการบุคลากร</h1>
+            <h1>
+              <FaUsers style={{ marginRight: "10px" }} /> จัดการบุคลากร
+            </h1>
             <p>จัดการข้อมูลบุคลากรในระบบ ({users.length} คน)</p>
           </div>
           <button className="add-btn" onClick={() => openModal()}>
-            ➕ เพิ่มบุคลากร
+            <FaPlus style={{ marginRight: "6px" }} /> เพิ่มบุคลากร
           </button>
         </div>
 
@@ -199,7 +241,7 @@ const UserManagement = () => {
             </thead>
             <tbody>
               {users.map((user) => (
-                <tr key={user._id}>
+                <tr key={user.id || user._id}>
                   <td>{user.employeeId}</td>
                   <td>
                     <div className="user-cell">
@@ -212,19 +254,19 @@ const UserManagement = () => {
                     </div>
                   </td>
                   <td>{user.email}</td>
-                  <td>{user.department}</td>
+                  <td>{user.department?.name || user.department || "-"}</td>
                   <td>{user.position}</td>
                   <td>{getRoleBadge(user.role)}</td>
                   <td>
                     <div className="leave-balance-cell">
                       <span title="ลาป่วย">
-                        🏥 {user.leaveBalance?.sick || 0}
+                        <FaHospital /> {user.leaveBalance?.sick || 0}
                       </span>
                       <span title="ลากิจ">
-                        📋 {user.leaveBalance?.personal || 0}
+                        <FaClipboardList /> {user.leaveBalance?.personal || 0}
                       </span>
                       <span title="ลาพักร้อน">
-                        🏖️ {user.leaveBalance?.vacation || 0}
+                        <FaUmbrellaBeach /> {user.leaveBalance?.vacation || 0}
                       </span>
                     </div>
                   </td>
@@ -234,13 +276,13 @@ const UserManagement = () => {
                         className="edit-btn"
                         onClick={() => openModal(user)}
                       >
-                        ✏️
+                        <FaEdit />
                       </button>
                       <button
                         className="delete-btn"
-                        onClick={() => handleDelete(user._id)}
+                        onClick={() => handleDelete(user.id || user._id)}
                       >
-                        🗑️
+                        <FaTrash />
                       </button>
                     </div>
                   </td>
@@ -256,7 +298,17 @@ const UserManagement = () => {
               className="modal-content user-modal"
               onClick={(e) => e.stopPropagation()}
             >
-              <h3>{editingUser ? "✏️ แก้ไขบุคลากร" : "➕ เพิ่มบุคลากร"}</h3>
+              <h3>
+                {editingUser ? (
+                  <>
+                    <FaEdit style={{ marginRight: "8px" }} /> แก้ไขบุคลากร
+                  </>
+                ) : (
+                  <>
+                    <FaPlus style={{ marginRight: "8px" }} /> เพิ่มบุคลากร
+                  </>
+                )}
+              </h3>
               <form onSubmit={handleSubmit}>
                 <div className="form-row">
                   <div className="form-group">
@@ -307,13 +359,13 @@ const UserManagement = () => {
 
                 <div className="form-row">
                   <div className="form-group">
-                    <label>แผนก/ภาควิชา</label>
+                    <label>แผนก/ภาควิชา (ID)</label>
                     <input
-                      type="text"
-                      name="department"
-                      value={formData.department}
+                      type="number"
+                      name="departmentId"
+                      value={formData.departmentId}
                       onChange={handleChange}
-                      required
+                      placeholder="เช่น 1, 2, 3"
                     />
                   </div>
                   <div className="form-group">
@@ -337,20 +389,23 @@ const UserManagement = () => {
                       onChange={handleChange}
                     >
                       <option value="employee">บุคลากร</option>
-                      <option value="supervisor">หัวหน้างาน</option>
+                      <option value="head">หัวหน้างาน</option>
                       <option value="admin">ผู้ดูแลระบบ</option>
                     </select>
                   </div>
                   <div className="form-group">
                     <label>หัวหน้างาน</label>
                     <select
-                      name="supervisor"
-                      value={formData.supervisor}
+                      name="supervisorId"
+                      value={formData.supervisorId}
                       onChange={handleChange}
                     >
                       <option value="">-- ไม่มี --</option>
                       {supervisors.map((sup) => (
-                        <option key={sup._id} value={sup._id}>
+                        <option
+                          key={sup.id || sup._id}
+                          value={sup.id || sup._id}
+                        >
                           {sup.firstName} {sup.lastName}
                         </option>
                       ))}

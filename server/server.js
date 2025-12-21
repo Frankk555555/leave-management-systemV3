@@ -3,10 +3,10 @@ const cors = require("cors");
 const path = require("path");
 require("dotenv").config();
 
-const connectDB = require("./config/db");
+const { sequelize, testConnection } = require("./config/database");
 
-// Connect to database
-connectDB();
+// Connect to MySQL database
+testConnection();
 
 const app = express();
 

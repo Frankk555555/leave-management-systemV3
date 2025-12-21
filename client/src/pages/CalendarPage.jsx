@@ -213,7 +213,7 @@ const CalendarPage = () => {
                   .filter((h) => new Date(h.date) >= new Date())
                   .slice(0, 5)
                   .map((h) => (
-                    <div key={h._id} className="upcoming-item">
+                    <div key={h.id || h._id} className="upcoming-item">
                       <span className="upcoming-date">
                         {new Date(h.date).toLocaleDateString("th-TH", {
                           day: "numeric",

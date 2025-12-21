@@ -7,6 +7,10 @@ const storage = multer.diskStorage({
     cb(null, "uploads/");
   },
   filename: function (req, file, cb) {
+    // Fix for Thai characters (UTF-8)
+    file.originalname = Buffer.from(file.originalname, "latin1").toString(
+      "utf8"
+    );
     const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
     cb(
       null,

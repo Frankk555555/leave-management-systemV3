@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import "./Login.css";
 import React from "react";
@@ -40,7 +40,7 @@ const Login = () => {
         <div className="login-header">
           <div className="logo">🎓</div>
           <h1>ระบบบริหารการลางานของบุคลากร</h1>
-          <p>มหาวิทยาลัย</p>
+          <p>มหาวิทยาลัยราชภัฏบุรีรัมย์</p>
         </div>
 
         <form onSubmit={handleSubmit} className="login-form">
@@ -76,9 +76,7 @@ const Login = () => {
         </form>
 
         <div className="login-footer">
-          <p>
-            ยังไม่มีบัญชี? <Link to="/register">ลงทะเบียน</Link>
-          </p>
+          <p>กรุณาติดต่อผู้ดูแลระบบหากต้องการสร้างบัญชี</p>
         </div>
       </div>
     </div>

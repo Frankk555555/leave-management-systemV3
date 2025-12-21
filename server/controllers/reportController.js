@@ -1,8 +1,13 @@
 const ExcelJS = require("exceljs");
 const PDFDocument = require("pdfkit");
-const LeaveRequest = require("../models/LeaveRequest");
-const User = require("../models/User");
-const LeaveType = require("../models/LeaveType");
+const {
+  LeaveRequest,
+  User,
+  LeaveType,
+  LeaveBalance,
+  Department,
+} = require("../models");
+const { Op } = require("sequelize");
 
 // @desc    Get leave statistics
 // @route   GET /api/reports/statistics
@@ -13,12 +18,30 @@ const getLeaveStatistics = async (req, res) => {
     const currentYear = year || new Date().getFullYear();
 
     const startDate = new Date(currentYear, 0, 1);
-    const endDate = new Date(currentYear, 11, 31);
+    const endDate = new Date(currentYear, 11, 31, 23, 59, 59);
 
     // Get all leave requests for the year
-    const leaveRequests = await LeaveRequest.find({
-      startDate: { $gte: startDate, $lte: endDate },
-    }).populate("employee", "firstName lastName department");
+    const leaveRequests = await LeaveRequest.findAll({
+      where: {
+        startDate: {
+          [Op.between]: [startDate, endDate],
+        },
+      },
+      include: [
+        {
+          model: User,
+          as: "user",
+          attributes: ["id", "firstName", "lastName", "departmentId"],
+          include: [
+            {
+              model: Department,
+              as: "department",
+              attributes: ["name"],
+            },
+          ],
+        },
+      ],
+    });
 
     // Statistics by type
     const byType = leaveRequests.reduce((acc, req) => {
@@ -28,7 +51,7 @@ const getLeaveStatistics = async (req, res) => {
 
     // Statistics by department
     const byDepartment = leaveRequests.reduce((acc, req) => {
-      const dept = req.employee?.department || "ไม่ระบุ";
+      const dept = req.user?.department?.name || "ไม่ระบุ";
       acc[dept] = (acc[dept] || 0) + req.totalDays;
       return acc;
     }, {});
@@ -47,7 +70,7 @@ const getLeaveStatistics = async (req, res) => {
     }, {});
 
     // Total employees
-    const totalEmployees = await User.countDocuments({ isActive: true });
+    const totalEmployees = await User.count();
 
     res.json({
       year: currentYear,
@@ -72,17 +95,40 @@ const exportToExcel = async (req, res) => {
   try {
     const { year, month } = req.query;
 
-    let query = {};
+    let where = {};
     if (year) {
       const startDate = new Date(year, month ? month - 1 : 0, 1);
-      const endDate = month ? new Date(year, month, 0) : new Date(year, 11, 31);
-      query.startDate = { $gte: startDate, $lte: endDate };
+      const endDate = month
+        ? new Date(year, month, 0)
+        : new Date(year, 11, 31, 23, 59, 59);
+      where.startDate = {
+        [Op.between]: [startDate, endDate],
+      };
     }
 
-    const leaveRequests = await LeaveRequest.find(query)
-      .populate("employee", "employeeId firstName lastName department position")
-      .populate("approvedBy", "firstName lastName")
-      .sort({ startDate: -1 });
+    const leaveRequests = await LeaveRequest.findAll({
+      where,
+      include: [
+        {
+          model: User,
+          as: "user",
+          attributes: ["employeeId", "firstName", "lastName", "position"],
+          include: [
+            {
+              model: Department,
+              as: "department",
+              attributes: ["name"],
+            },
+          ],
+        },
+        {
+          model: User,
+          as: "approver",
+          attributes: ["firstName", "lastName"],
+        },
+      ],
+      order: [["startDate", "DESC"]],
+    });
 
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet("รายงานการลา");
@@ -113,8 +159,13 @@ const exportToExcel = async (req, res) => {
     // Add data
     const leaveTypeNames = {
       sick: "ลาป่วย",
-      personal: "ลากิจ",
-      vacation: "ลาพักร้อน",
+      personal: "ลากิจส่วนตัว",
+      vacation: "ลาพักผ่อน",
+      maternity: "ลาคลอดบุตร",
+      paternity: "ลาช่วยภรรยาคลอด",
+      childcare: "ลาเลี้ยงดูบุตร",
+      ordination: "ลาอุปสมบท/ฮัจย์",
+      military: "ลาตรวจเลือก",
     };
     const statusNames = {
       pending: "รออนุมัติ",
@@ -124,18 +175,18 @@ const exportToExcel = async (req, res) => {
 
     leaveRequests.forEach((request) => {
       worksheet.addRow({
-        employeeId: request.employee?.employeeId || "",
-        employeeName: `${request.employee?.firstName || ""} ${
-          request.employee?.lastName || ""
+        employeeId: request.user?.employeeId || "",
+        employeeName: `${request.user?.firstName || ""} ${
+          request.user?.lastName || ""
         }`,
-        department: request.employee?.department || "",
+        department: request.user?.department?.name || "",
         leaveType: leaveTypeNames[request.leaveType] || request.leaveType,
         startDate: new Date(request.startDate).toLocaleDateString("th-TH"),
         endDate: new Date(request.endDate).toLocaleDateString("th-TH"),
         totalDays: request.totalDays,
         status: statusNames[request.status] || request.status,
-        approvedBy: request.approvedBy
-          ? `${request.approvedBy.firstName} ${request.approvedBy.lastName}`
+        approvedBy: request.approver
+          ? `${request.approver.firstName} ${request.approver.lastName}`
           : "",
         reason: request.reason,
       });
@@ -165,18 +216,43 @@ const exportToPDF = async (req, res) => {
   try {
     const { year, month } = req.query;
 
-    let query = {};
+    let where = {};
     if (year) {
       const startDate = new Date(year, month ? month - 1 : 0, 1);
-      const endDate = month ? new Date(year, month, 0) : new Date(year, 11, 31);
-      query.startDate = { $gte: startDate, $lte: endDate };
+      const endDate = month
+        ? new Date(year, month, 0)
+        : new Date(year, 11, 31, 23, 59, 59);
+      where.startDate = {
+        [Op.between]: [startDate, endDate],
+      };
     }
 
-    const leaveRequests = await LeaveRequest.find(query)
-      .populate("employee", "employeeId firstName lastName department")
-      .sort({ startDate: -1 });
+    const leaveRequests = await LeaveRequest.findAll({
+      where,
+      include: [
+        {
+          model: User,
+          as: "user",
+          attributes: ["employeeId", "firstName", "lastName"],
+          include: [
+            {
+              model: Department,
+              as: "department",
+              attributes: ["name"],
+            },
+          ],
+        },
+      ],
+      order: [["startDate", "DESC"]],
+    });
 
-    const doc = new PDFDocument({ margin: 50 });
+    const path = require("path");
+    const fontPath = path.join(__dirname, "../fonts/Mitr-Regular.ttf");
+
+    const doc = new PDFDocument({
+      margin: 50,
+      font: fontPath, // Set default font
+    });
 
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader(
@@ -185,6 +261,9 @@ const exportToPDF = async (req, res) => {
     );
 
     doc.pipe(res);
+
+    // Register font family to be safe
+    doc.font(fontPath);
 
     // Title
     doc.fontSize(20).text("รายงานการลา", { align: "center" });
@@ -211,8 +290,13 @@ const exportToPDF = async (req, res) => {
     // Table header
     const leaveTypeNames = {
       sick: "ลาป่วย",
-      personal: "ลากิจ",
-      vacation: "ลาพักร้อน",
+      personal: "ลากิจส่วนตัว",
+      vacation: "ลาพักผ่อน",
+      maternity: "ลาคลอดบุตร",
+      paternity: "ลาช่วยภรรยาคลอด",
+      childcare: "ลาเลี้ยงดูบุตร",
+      ordination: "ลาอุปสมบท/ฮัจย์",
+      military: "ลาตรวจเลือก",
     };
 
     doc.fontSize(14).text("รายละเอียด", { underline: true });
@@ -221,8 +305,8 @@ const exportToPDF = async (req, res) => {
     leaveRequests.slice(0, 50).forEach((request, index) => {
       doc.fontSize(10);
       doc.text(
-        `${index + 1}. ${request.employee?.firstName || ""} ${
-          request.employee?.lastName || ""
+        `${index + 1}. ${request.user?.firstName || ""} ${
+          request.user?.lastName || ""
         } - ${leaveTypeNames[request.leaveType] || request.leaveType}`
       );
       doc.text(
@@ -247,31 +331,36 @@ const exportToPDF = async (req, res) => {
 // @access  Private/Admin
 const resetYearlyLeaveBalance = async (req, res) => {
   try {
-    // Get default leave days from LeaveType
-    const leaveTypes = await LeaveType.find({ isActive: true });
-
-    const leaveBalance = {
-      sick: 30,
-      personal: 10,
-      vacation: 10,
-    };
-
-    leaveTypes.forEach((type) => {
-      if (leaveBalance.hasOwnProperty(type.code)) {
-        leaveBalance[type.code] = type.defaultDays;
+    // Update all leave balances to default values
+    const [updatedCount] = await LeaveBalance.update(
+      {
+        sick: 60,
+        personal: 45,
+        vacation: 10,
+        maternity: 90,
+        paternity: 15,
+        childcare: 150,
+        ordination: 120,
+        military: 60,
+      },
+      {
+        where: {}, // Update all records
       }
-    });
-
-    // Update all active users
-    const result = await User.updateMany(
-      { isActive: true },
-      { $set: { leaveBalance } }
     );
 
     res.json({
       message: "รีเซ็ตวันลาประจำปีเรียบร้อยแล้ว",
-      updatedCount: result.modifiedCount,
-      leaveBalance,
+      updatedCount,
+      leaveBalance: {
+        sick: 60,
+        personal: 45,
+        vacation: 10,
+        maternity: 90,
+        paternity: 15,
+        childcare: 150,
+        ordination: 120,
+        military: 60,
+      },
     });
   } catch (error) {
     console.error(error);
@@ -284,30 +373,55 @@ const resetYearlyLeaveBalance = async (req, res) => {
 // @access  Private/Admin
 const getAllRequests = async (req, res) => {
   try {
-    const { year, status, department } = req.query;
+    const { year, status, departmentId } = req.query;
 
-    let query = {};
+    let where = {};
 
     if (year) {
       const startDate = new Date(year, 0, 1);
-      const endDate = new Date(year, 11, 31);
-      query.startDate = { $gte: startDate, $lte: endDate };
+      const endDate = new Date(year, 11, 31, 23, 59, 59);
+      where.startDate = {
+        [Op.between]: [startDate, endDate],
+      };
     }
 
     if (status) {
-      query.status = status;
+      where.status = status;
     }
 
-    let leaveRequests = await LeaveRequest.find(query)
-      .populate("employee", "employeeId firstName lastName department position")
-      .populate("approvedBy", "firstName lastName")
-      .sort({ createdAt: -1 });
+    const include = [
+      {
+        model: User,
+        as: "user",
+        attributes: [
+          "id",
+          "employeeId",
+          "firstName",
+          "lastName",
+          "position",
+          "departmentId",
+        ],
+        include: [
+          {
+            model: Department,
+            as: "department",
+            attributes: ["id", "name"],
+          },
+        ],
+        where: departmentId ? { departmentId } : undefined,
+      },
+      {
+        model: User,
+        as: "approver",
+        attributes: ["id", "firstName", "lastName"],
+      },
+    ];
 
-    if (department) {
-      leaveRequests = leaveRequests.filter(
-        (r) => r.employee?.department === department
-      );
-    }
+    const leaveRequests = await LeaveRequest.findAll({
+      where,
+      include,
+      order: [["createdAt", "DESC"]],
+    });
 
     res.json(leaveRequests);
   } catch (error) {

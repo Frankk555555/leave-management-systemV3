@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { leaveRequestsAPI } from "../services/api";
+import { useToast } from "../components/common/Toast";
 import Navbar from "../components/common/Navbar";
 import "./Approvals.css";
 
@@ -20,6 +21,7 @@ import {
 } from "react-icons/fa";
 
 const Approvals = () => {
+  const toast = useToast();
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(null);
@@ -55,13 +57,17 @@ const Approvals = () => {
     try {
       if (noteModal.action === "approve") {
         await leaveRequestsAPI.approve(noteModal.requestId, note);
+        toast.success("อนุมัติคำขอลาเรียบร้อยแล้ว");
       } else {
         await leaveRequestsAPI.reject(noteModal.requestId, note);
+        toast.success("ปฏิเสธคำขอลาเรียบร้อยแล้ว");
       }
-      setRequests((prev) => prev.filter((r) => r._id !== noteModal.requestId));
+      setRequests((prev) =>
+        prev.filter((r) => (r.id || r._id) !== noteModal.requestId)
+      );
     } catch (error) {
       console.error("Error processing request:", error);
-      alert(error.response?.data?.message || "เกิดข้อผิดพลาด");
+      toast.error(error.response?.data?.message || "เกิดข้อผิดพลาด");
     } finally {
       setProcessing(null);
       setNoteModal({ open: false, requestId: null, action: null });
@@ -153,7 +159,7 @@ const Approvals = () => {
         ) : (
           <div className="approvals-grid">
             {requests.map((request) => (
-              <div key={request._id} className="approval-card">
+              <div key={request.id || request._id} className="approval-card">
                 <div className="card-header">
                   <div className="employee-info">
                     <div className="avatar">
@@ -194,6 +200,12 @@ const Approvals = () => {
                     <div className="days-count">
                       <span className="days-number">{request.totalDays}</span>
                       <span className="days-label">วัน</span>
+                      {(request.timeSlot === "morning" ||
+                        request.timeSlot === "afternoon") && (
+                        <span className="time-slot-badge">
+                          ({request.timeSlot === "morning" ? "เช้า" : "บ่าย"})
+                        </span>
+                      )}
                     </div>
                   </div>
 
@@ -209,12 +221,21 @@ const Approvals = () => {
                       </span>
                       <div className="attachments-list">
                         {request.attachments.map((file, idx) => {
-                          const fileName = file.split("/").pop();
+                          // Handle both Sequelize object and Mongoose string formats
+                          const filePath =
+                            typeof file === "string" ? file : file.filePath;
+                          const fileName =
+                            typeof file === "string"
+                              ? file.split("/").pop()
+                              : file.fileName ||
+                                filePath?.split("/").pop() ||
+                                "ไฟล์แนบ";
+
                           return (
                             <button
                               key={idx}
                               type="button"
-                              onClick={() => handlePreview(file)}
+                              onClick={() => handlePreview(filePath)}
                               className="attachment-link"
                             >
                               <FaFileAlt /> {fileName}
@@ -229,15 +250,19 @@ const Approvals = () => {
                 <div className="card-actions">
                   <button
                     className="reject-btn"
-                    onClick={() => handleAction(request._id, "reject")}
-                    disabled={processing === request._id}
+                    onClick={() =>
+                      handleAction(request.id || request._id, "reject")
+                    }
+                    disabled={processing === (request.id || request._id)}
                   >
                     <FaTimesCircle /> ไม่อนุมัติ
                   </button>
                   <button
                     className="approve-btn"
-                    onClick={() => handleAction(request._id, "approve")}
-                    disabled={processing === request._id}
+                    onClick={() =>
+                      handleAction(request.id || request._id, "approve")
+                    }
+                    disabled={processing === (request.id || request._id)}
                   >
                     <FaCheckCircle /> อนุมัติ
                   </button>

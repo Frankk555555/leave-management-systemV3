@@ -122,7 +122,7 @@ const Navbar = () => {
           <span className="user-role">
             {user?.role === "admin"
               ? "ผู้ดูแลระบบ"
-              : user?.role === "supervisor"
+              : user?.role === "supervisor" || user?.role === "head"
               ? "หัวหน้างาน"
               : "บุคลากร"}
           </span>

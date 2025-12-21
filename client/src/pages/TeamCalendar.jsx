@@ -1,6 +1,18 @@
 import React, { useState, useEffect } from "react";
 import Calendar from "react-calendar";
 import { leaveRequestsAPI, holidaysAPI } from "../services/api";
+import {
+  FaBriefcaseMedical,
+  FaClipboardList,
+  FaUmbrellaBeach,
+  FaBaby,
+  FaBabyCarriage,
+  FaChild,
+  FaPray,
+  FaMedal,
+  FaFileAlt,
+  FaBirthdayCake,
+} from "react-icons/fa";
 import Navbar from "../components/common/Navbar";
 import "react-calendar/dist/Calendar.css";
 import "./TeamCalendar.css";
@@ -69,12 +81,30 @@ const TeamCalendar = () => {
   };
 
   const getLeaveTypeIcon = (type) => {
-    const icons = { sick: "🏥", personal: "📋", vacation: "🏖️" };
-    return icons[type] || "📝";
+    const icons = {
+      sick: <FaBriefcaseMedical className="icon-sick" />,
+      personal: <FaClipboardList className="icon-personal" />,
+      vacation: <FaUmbrellaBeach className="icon-vacation" />,
+      maternity: <FaBaby className="icon-maternity" />,
+      paternity: <FaBabyCarriage className="icon-paternity" />,
+      childcare: <FaChild className="icon-childcare" />,
+      ordination: <FaPray className="icon-ordination" />,
+      military: <FaMedal className="icon-military" />,
+    };
+    return icons[type] || <FaFileAlt />;
   };
 
   const getLeaveTypeName = (type) => {
-    const types = { sick: "ลาป่วย", personal: "ลากิจ", vacation: "ลาพักร้อน" };
+    const types = {
+      sick: "ลาป่วย",
+      personal: "ลากิจส่วนตัว",
+      vacation: "ลาพักผ่อน",
+      maternity: "ลาคลอดบุตร",
+      paternity: "ลาช่วยภรรยาคลอด",
+      childcare: "ลาเลี้ยงดูบุตร",
+      ordination: "ลาอุปสมบท/ฮัจย์",
+      military: "ลาตรวจเลือก/เตรียมพล",
+    };
     return types[type] || type;
   };
 
@@ -128,7 +158,9 @@ const TeamCalendar = () => {
 
               {selectedHoliday && (
                 <div className="event-item holiday-event">
-                  <span className="event-icon">🎉</span>
+                  <span className="event-icon">
+                    <FaBirthdayCake />
+                  </span>
                   <div className="event-info">
                     <h4>{selectedHoliday.name}</h4>
                     <p>วันหยุดราชการ</p>
@@ -139,21 +171,84 @@ const TeamCalendar = () => {
               {selectedDateLeaves.length > 0 ? (
                 <div className="team-leaves-list">
                   <h4>
-                    👥 เพื่อนร่วมงานลาวันนี้ ({selectedDateLeaves.length} คน)
+                    👥 เพื่อนร่วมงานลาวันนี้ (
+                    {
+                      Object.values(
+                        selectedDateLeaves.reduce((acc, leave) => {
+                          const userId =
+                            leave.userId ||
+                            leave.user?.id ||
+                            leave.employee?._id;
+                          if (!acc[userId]) acc[userId] = [];
+                          acc[userId].push(leave);
+                          return acc;
+                        }, {})
+                      ).length
+                    }{" "}
+                    คน)
                   </h4>
-                  {selectedDateLeaves.map((leave) => (
-                    <div key={leave._id} className="team-member-leave">
+                  {Object.values(
+                    selectedDateLeaves.reduce((acc, leave) => {
+                      const userId =
+                        leave.userId || leave.user?.id || leave.employee?._id;
+                      if (!acc[userId]) {
+                        acc[userId] = {
+                          user: leave.user || leave.employee,
+                          leaves: [],
+                        };
+                      }
+                      acc[userId].leaves.push(leave);
+                      return acc;
+                    }, {})
+                  ).map(({ user, leaves }) => (
+                    <div
+                      key={user?.id || user?._id || Math.random()}
+                      className="team-member-leave"
+                    >
                       <div className="member-avatar">
-                        {leave.employee?.firstName?.charAt(0)}
+                        {user?.firstName?.charAt(0)}
                       </div>
                       <div className="member-info">
                         <span className="member-name">
-                          {leave.employee?.firstName} {leave.employee?.lastName}
+                          {user?.firstName} {user?.lastName}
                         </span>
-                        <span className="leave-type">
-                          {getLeaveTypeIcon(leave.leaveType)}{" "}
-                          {getLeaveTypeName(leave.leaveType)}
-                        </span>
+                        <div className="leave-types-list">
+                          {leaves.map((leave, index) => (
+                            <span
+                              key={index}
+                              className="leave-type-badge"
+                              style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                marginRight: "8px",
+                                marginTop: "4px",
+                                fontSize: "0.85rem",
+                                color: "#666",
+                              }}
+                            >
+                              {getLeaveTypeIcon(leave.leaveType)}{" "}
+                              <span style={{ marginLeft: "4px" }}>
+                                {getLeaveTypeName(leave.leaveType)}
+                                {(leave.timeSlot === "morning" ||
+                                  leave.timeSlot === "afternoon") && (
+                                  <span
+                                    style={{
+                                      marginLeft: "4px",
+                                      fontWeight: "bold",
+                                      fontSize: "0.8em",
+                                    }}
+                                  >
+                                    (
+                                    {leave.timeSlot === "morning"
+                                      ? "เช้า"
+                                      : "บ่าย"}
+                                    )
+                                  </span>
+                                )}
+                              </span>
+                            </span>
+                          ))}
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -186,7 +281,7 @@ const TeamCalendar = () => {
                   .filter((l) => new Date(l.startDate) >= new Date())
                   .slice(0, 5)
                   .map((leave) => (
-                    <div key={leave._id} className="upcoming-item">
+                    <div key={leave.id || leave._id} className="upcoming-item">
                       <div className="upcoming-date">
                         {new Date(leave.startDate).toLocaleDateString("th-TH", {
                           day: "numeric",
@@ -195,7 +290,8 @@ const TeamCalendar = () => {
                       </div>
                       <div className="upcoming-info">
                         <span className="upcoming-name">
-                          {leave.employee?.firstName} {leave.employee?.lastName}
+                          {leave.user?.firstName || leave.employee?.firstName}{" "}
+                          {leave.user?.lastName || leave.employee?.lastName}
                         </span>
                         <span className="upcoming-type">
                           {getLeaveTypeName(leave.leaveType)} ({leave.totalDays}{" "}

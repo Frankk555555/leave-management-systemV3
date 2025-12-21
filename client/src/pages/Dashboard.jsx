@@ -16,6 +16,11 @@ import {
   FaClipboardList,
   FaUmbrellaBeach,
   FaHandPaper,
+  FaBaby,
+  FaUserFriends,
+  FaChild,
+  FaPray,
+  FaMedal,
 } from "react-icons/fa";
 
 const Dashboard = () => {
@@ -129,7 +134,7 @@ const Dashboard = () => {
         <div className="dashboard-header">
           <h1>
             สวัสดี, {user?.firstName}!{" "}
-            <FaHandPaper style={{ marginLeft: "0.3rem" }} />
+            <FaHandPaper style={{ marginLeft: "0.3rem", color: "#e6c314ff" }} />
           </h1>
           <p>ยินดีต้อนรับเข้าสู่ระบบบริหารการลา</p>
         </div>
@@ -142,7 +147,7 @@ const Dashboard = () => {
                 background: "linear-gradient(135deg, #667eea, #764ba2)",
               }}
             >
-              <FaChartBar />
+              <FaChartBar color="white" />
             </div>
             <div className="stat-info">
               <h3>{stats.total}</h3>
@@ -157,7 +162,7 @@ const Dashboard = () => {
                 background: "linear-gradient(135deg, #f6d365, #fda085)",
               }}
             >
-              <FaClock />
+              <FaClock color="white" />
             </div>
             <div className="stat-info">
               <h3>{stats.pending}</h3>
@@ -172,7 +177,7 @@ const Dashboard = () => {
                 background: "linear-gradient(135deg, #11998e, #38ef7d)",
               }}
             >
-              <FaCheckCircle />
+              <FaCheckCircle color="white" />
             </div>
             <div className="stat-info">
               <h3>{stats.approved}</h3>
@@ -187,7 +192,7 @@ const Dashboard = () => {
                 background: "linear-gradient(135deg, #ff6b6b, #ee5a5a)",
               }}
             >
-              <FaTimesCircle />
+              <FaTimesCircle color="white" />
             </div>
             <div className="stat-info">
               <h3>{stats.rejected}</h3>
@@ -203,8 +208,13 @@ const Dashboard = () => {
             </h2>
             <div className="balance-grid">
               <div className="balance-item">
-                <div className="balance-icon">
-                  <FaHospital />
+                <div
+                  className="balance-icon"
+                  style={{
+                    background: "linear-gradient(135deg, #059669, #10b981)",
+                  }}
+                >
+                  <FaHospital color="white" />
                 </div>
                 <div className="balance-info">
                   <h4>ลาป่วย</h4>
@@ -219,19 +229,27 @@ const Dashboard = () => {
                   <div
                     className="balance-progress"
                     style={{
-                      width: `${((user?.leaveBalance?.sick || 0) / 30) * 100}%`,
-                      background: "linear-gradient(90deg, #11998e, #38ef7d)",
+                      width: `${Math.min(
+                        ((user?.leaveBalance?.sick || 0) / 60) * 100,
+                        100
+                      )}%`,
+                      background: "linear-gradient(90deg, #059669, #10b981)",
                     }}
                   ></div>
                 </div>
               </div>
 
               <div className="balance-item">
-                <div className="balance-icon">
-                  <FaClipboardList />
+                <div
+                  className="balance-icon"
+                  style={{
+                    background: "linear-gradient(135deg, #6366f1, #8b5cf6)",
+                  }}
+                >
+                  <FaClipboardList color="white" />
                 </div>
                 <div className="balance-info">
-                  <h4>ลากิจ</h4>
+                  <h4>ลากิจส่วนตัว</h4>
                   <p>
                     <span className="balance-number">
                       {user?.leaveBalance?.personal || 0}
@@ -243,21 +261,27 @@ const Dashboard = () => {
                   <div
                     className="balance-progress"
                     style={{
-                      width: `${
-                        ((user?.leaveBalance?.personal || 0) / 10) * 100
-                      }%`,
-                      background: "linear-gradient(90deg, #667eea, #764ba2)",
+                      width: `${Math.min(
+                        ((user?.leaveBalance?.personal || 0) / 45) * 100,
+                        100
+                      )}%`,
+                      background: "linear-gradient(90deg, #6366f1, #8b5cf6)",
                     }}
                   ></div>
                 </div>
               </div>
 
               <div className="balance-item">
-                <div className="balance-icon">
-                  <FaUmbrellaBeach />
+                <div
+                  className="balance-icon"
+                  style={{
+                    background: "linear-gradient(135deg, #f59e0b, #fbbf24)",
+                  }}
+                >
+                  <FaUmbrellaBeach color="white" />
                 </div>
                 <div className="balance-info">
-                  <h4>ลาพักร้อน</h4>
+                  <h4>ลาพักผ่อน</h4>
                   <p>
                     <span className="balance-number">
                       {user?.leaveBalance?.vacation || 0}
@@ -269,10 +293,168 @@ const Dashboard = () => {
                   <div
                     className="balance-progress"
                     style={{
-                      width: `${
-                        ((user?.leaveBalance?.vacation || 0) / 10) * 100
-                      }%`,
-                      background: "linear-gradient(90deg, #f6d365, #fda085)",
+                      width: `${Math.min(
+                        ((user?.leaveBalance?.vacation || 0) / 10) * 100,
+                        100
+                      )}%`,
+                      background: "linear-gradient(90deg, #f59e0b, #fbbf24)",
+                    }}
+                  ></div>
+                </div>
+              </div>
+
+              <div className="balance-item">
+                <div
+                  className="balance-icon"
+                  style={{
+                    background: "linear-gradient(135deg, #ec4899, #f472b6)",
+                  }}
+                >
+                  <FaBaby color="white" />
+                </div>
+                <div className="balance-info">
+                  <h4>ลาคลอดบุตร</h4>
+                  <p>
+                    <span className="balance-number">
+                      {user?.leaveBalance?.maternity || 0}
+                    </span>{" "}
+                    วัน
+                  </p>
+                </div>
+                <div className="balance-bar">
+                  <div
+                    className="balance-progress"
+                    style={{
+                      width: `${Math.min(
+                        ((user?.leaveBalance?.maternity || 0) / 90) * 100,
+                        100
+                      )}%`,
+                      background: "linear-gradient(90deg, #ec4899, #f472b6)",
+                    }}
+                  ></div>
+                </div>
+              </div>
+
+              <div className="balance-item">
+                <div
+                  className="balance-icon"
+                  style={{
+                    background: "linear-gradient(135deg, #0891b2, #22d3ee)",
+                  }}
+                >
+                  <FaUserFriends color="white" />
+                </div>
+                <div className="balance-info">
+                  <h4>ลาช่วยภรรยาคลอด</h4>
+                  <p>
+                    <span className="balance-number">
+                      {user?.leaveBalance?.paternity || 0}
+                    </span>{" "}
+                    วัน
+                  </p>
+                </div>
+                <div className="balance-bar">
+                  <div
+                    className="balance-progress"
+                    style={{
+                      width: `${Math.min(
+                        ((user?.leaveBalance?.paternity || 0) / 15) * 100,
+                        100
+                      )}%`,
+                      background: "linear-gradient(90deg, #0891b2, #22d3ee)",
+                    }}
+                  ></div>
+                </div>
+              </div>
+
+              <div className="balance-item">
+                <div
+                  className="balance-icon"
+                  style={{
+                    background: "linear-gradient(135deg, #14b8a6, #5eead4)",
+                  }}
+                >
+                  <FaChild color="white" />
+                </div>
+                <div className="balance-info">
+                  <h4>ลาเลี้ยงดูบุตร</h4>
+                  <p>
+                    <span className="balance-number">
+                      {user?.leaveBalance?.childcare || 0}
+                    </span>{" "}
+                    วัน
+                  </p>
+                </div>
+                <div className="balance-bar">
+                  <div
+                    className="balance-progress"
+                    style={{
+                      width: `${Math.min(
+                        ((user?.leaveBalance?.childcare || 0) / 150) * 100,
+                        100
+                      )}%`,
+                      background: "linear-gradient(90deg, #14b8a6, #5eead4)",
+                    }}
+                  ></div>
+                </div>
+              </div>
+
+              <div className="balance-item">
+                <div
+                  className="balance-icon"
+                  style={{
+                    background: "linear-gradient(135deg, #ea580c, #fb923c)",
+                  }}
+                >
+                  <FaPray color="white" />
+                </div>
+                <div className="balance-info">
+                  <h4>ลาอุปสมบท/ฮัจย์</h4>
+                  <p>
+                    <span className="balance-number">
+                      {user?.leaveBalance?.ordination || 0}
+                    </span>{" "}
+                    วัน
+                  </p>
+                </div>
+                <div className="balance-bar">
+                  <div
+                    className="balance-progress"
+                    style={{
+                      width: `${Math.min(
+                        ((user?.leaveBalance?.ordination || 0) / 120) * 100,
+                        100
+                      )}%`,
+                      background: "linear-gradient(90deg, #ea580c, #fb923c)",
+                    }}
+                  ></div>
+                </div>
+              </div>
+
+              <div className="balance-item">
+                <div
+                  className="balance-icon"
+                  style={{
+                    background: "linear-gradient(135deg, #3b82f6, #60a5fa)",
+                  }}
+                >
+                  <FaMedal color="white" />
+                </div>
+                <div className="balance-info">
+                  <h4>ลาตรวจเลือก</h4>
+                  <p>
+                    <span className="balance-number">
+                      {user?.leaveBalance?.military || 0}
+                    </span>{" "}
+                    วัน
+                  </p>
+                </div>
+                <div className="balance-bar">
+                  <div
+                    className="balance-progress"
+                    style={{
+                      width: "100%",
+                      background: "linear-gradient(90deg, #3b82f6, #60a5fa)",
                     }}
                   ></div>
                 </div>
@@ -289,7 +471,7 @@ const Dashboard = () => {
             ) : (
               <div className="requests-list">
                 {recentRequests.map((request) => (
-                  <div key={request._id} className="request-item">
+                  <div key={request.id || request._id} className="request-item">
                     <div className="request-type">
                       {getLeaveTypeIcon(request.leaveType)}
                     </div>

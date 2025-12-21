@@ -210,7 +210,7 @@ const Register = () => {
             >
               <option value="">-- เลือกหัวหน้างาน --</option>
               {supervisors.map((sup) => (
-                <option key={sup._id} value={sup._id}>
+                <option key={sup.id || sup._id} value={sup.id || sup._id}>
                   {sup.firstName} {sup.lastName} ({sup.department})
                 </option>
               ))}

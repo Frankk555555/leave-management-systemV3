@@ -1,6 +1,11 @@
-const LeaveRequest = require("../models/LeaveRequest");
-const User = require("../models/User");
-const Notification = require("../models/Notification");
+const {
+  LeaveRequest,
+  User,
+  LeaveBalance,
+  LeaveAttachment,
+  Department,
+} = require("../models");
+const { Op } = require("sequelize");
 const {
   sendLeaveRequestEmail,
   sendApprovalEmail,
@@ -10,6 +15,7 @@ const {
   calculateWorkingDays,
   getFiscalYear,
 } = require("../services/leaveValidationService");
+const { Notification } = require("../models");
 
 // @desc    Create leave request
 // @route   POST /api/leave-requests
@@ -21,15 +27,18 @@ const createLeaveRequest = async (req, res) => {
       startDate,
       endDate,
       reason,
+      contactAddress,
+      contactPhone,
       childBirthDate,
       ceremonyDate,
       hasMedicalCertificate,
       isLongTermSick,
+      timeSlot,
     } = req.body;
 
     // Validate leave request with business rules
     const validation = await validateLeaveRequest({
-      userId: req.user._id,
+      userId: req.user.id,
       leaveType,
       startDate,
       endDate,
@@ -37,98 +46,92 @@ const createLeaveRequest = async (req, res) => {
       ceremonyDate,
       hasMedicalCertificate,
       isLongTermSick,
+      timeSlot,
     });
 
     if (!validation.valid) {
       return res.status(400).json({ message: validation.message });
     }
 
-    // Get attachment paths if files were uploaded (convert to URL format)
-    const attachments = req.files
-      ? req.files.map((file) => "/" + file.path.replace(/\\/g, "/"))
-      : [];
-
     // Determine if paid leave
     const isPaidLeave = validation.isPaidLeave !== false;
 
     // Create leave request
     const leaveRequest = await LeaveRequest.create({
-      employee: req.user._id,
+      userId: req.user.id,
       leaveType,
       startDate,
       endDate,
       totalDays: validation.totalDays,
-      workingDays: validation.workingDays,
+      timeSlot: timeSlot || "full",
       reason,
-      attachments,
-      childBirthDate: childBirthDate || null,
-      ceremonyDate: ceremonyDate || null,
-      hasMedicalCertificate: hasMedicalCertificate || false,
-      isLongTermSick: isLongTermSick || false,
-      isPaidLeave,
-      fiscalYear: getFiscalYear(new Date(startDate)),
+      contactAddress,
+      contactPhone,
       // Auto-approve for military leave
       status: validation.autoApprove ? "approved" : "pending",
-      approvedBy: validation.autoApprove ? req.user._id : null,
-      approvalDate: validation.autoApprove ? new Date() : null,
-      approvalNote: validation.autoApprove ? "อนุมัติอัตโนมัติตามระเบียบ" : "",
+      approvedBy: validation.autoApprove ? req.user.id : null,
+      approvedAt: validation.autoApprove ? new Date() : null,
     });
+
+    // Handle file uploads (create attachments)
+    if (req.files && req.files.length > 0) {
+      const attachmentPromises = req.files.map((file) =>
+        LeaveAttachment.create({
+          leaveRequestId: leaveRequest.id,
+          fileName: file.originalname,
+          filePath: "/" + file.path.replace(/\\/g, "/"),
+          fileType: file.mimetype,
+          fileSize: file.size,
+        })
+      );
+      await Promise.all(attachmentPromises);
+    }
+
+    // Create Notification for Supervisor
+    const currentUser = await User.findByPk(req.user.id);
+    if (currentUser.supervisorId && !validation.autoApprove) {
+      await Notification.create({
+        userId: currentUser.supervisorId,
+        type: "leave_request",
+        title: "มีคำขอลาใหม่",
+        message: `${currentUser.firstName} ${
+          currentUser.lastName
+        } ได้ขอลา ${getLeaveTypeName(leaveType)}`,
+        relatedLeaveId: leaveRequest.id,
+        isRead: false,
+      });
+    }
 
     // Deduct leave balance if auto-approved
     if (validation.autoApprove) {
-      const user = await User.findById(req.user._id);
+      const userBalance = await LeaveBalance.findOne({
+        where: { userId: req.user.id },
+      });
       const daysToDeduct = validation.countWorkingDaysOnly
         ? validation.workingDays
         : validation.totalDays;
-      user.leaveBalance[leaveType] -= daysToDeduct;
-      await user.save();
-    }
 
-    // Get user for notifications
-    const user = await User.findById(req.user._id);
-
-    // Create notification for supervisor (skip for auto-approved)
-    let emailSentTo = [];
-
-    if (!validation.autoApprove && user.supervisor) {
-      const supervisor = await User.findById(user.supervisor);
-      await Notification.create({
-        user: user.supervisor,
-        type: "leave_request",
-        title: "คำขอลาใหม่",
-        message: `${user.firstName} ${user.lastName} ยื่นคำขอ${getLeaveTypeName(
-          leaveType
-        )} ${validation.totalDays} วัน`,
-        relatedLeave: leaveRequest._id,
-      });
-      sendLeaveRequestEmail(supervisor, user, leaveRequest);
-      emailSentTo.push(user.supervisor.toString());
-    }
-
-    // Notify admins (skip for auto-approved)
-    if (!validation.autoApprove) {
-      const admins = await User.find({
-        role: "admin",
-        _id: { $ne: req.user._id },
-      });
-      for (const admin of admins) {
-        if (emailSentTo.includes(admin._id.toString())) continue;
-
-        await Notification.create({
-          user: admin._id,
-          type: "leave_request",
-          title: "คำขอลาใหม่",
-          message: `${user.firstName} ${
-            user.lastName
-          } ยื่นคำขอ${getLeaveTypeName(leaveType)} ${validation.totalDays} วัน`,
-          relatedLeave: leaveRequest._id,
+      if (userBalance && userBalance[leaveType] !== undefined) {
+        await userBalance.update({
+          [leaveType]: userBalance[leaveType] - daysToDeduct,
         });
-        sendLeaveRequestEmail(admin, user, leaveRequest);
       }
     }
 
+    // Fetch created request with associations
+    const createdRequest = await LeaveRequest.findByPk(leaveRequest.id, {
+      include: [
+        {
+          model: User,
+          as: "user",
+          attributes: ["id", "firstName", "lastName", "email"],
+        },
+        { model: LeaveAttachment, as: "attachments" },
+      ],
+    });
+
     res.status(201).json({
-      ...leaveRequest.toObject(),
+      ...createdRequest.toJSON(),
       message: validation.autoApprove
         ? "อนุมัติอัตโนมัติตามระเบียบ (ลาตรวจเลือก/เตรียมพล)"
         : undefined,
@@ -144,9 +147,21 @@ const createLeaveRequest = async (req, res) => {
 // @access  Private
 const getMyLeaveRequests = async (req, res) => {
   try {
-    const leaveRequests = await LeaveRequest.find({ employee: req.user._id })
-      .populate("approvedBy", "firstName lastName")
-      .sort({ createdAt: -1 });
+    const leaveRequests = await LeaveRequest.findAll({
+      where: { userId: req.user.id },
+      include: [
+        {
+          model: User,
+          as: "approver",
+          attributes: ["id", "firstName", "lastName"],
+        },
+        {
+          model: LeaveAttachment,
+          as: "attachments",
+        },
+      ],
+      order: [["createdAt", "DESC"]],
+    });
     res.json(leaveRequests);
   } catch (error) {
     console.error(error);
@@ -159,10 +174,35 @@ const getMyLeaveRequests = async (req, res) => {
 // @access  Private/Admin
 const getAllLeaveRequests = async (req, res) => {
   try {
-    const leaveRequests = await LeaveRequest.find({})
-      .populate("employee", "firstName lastName email department")
-      .populate("approvedBy", "firstName lastName")
-      .sort({ createdAt: -1 });
+    const leaveRequests = await LeaveRequest.findAll({
+      include: [
+        {
+          model: User,
+          as: "user",
+          attributes: [
+            "id",
+            "employeeId",
+            "firstName",
+            "lastName",
+            "email",
+            "position",
+          ],
+          include: [
+            {
+              model: Department,
+              as: "department",
+              attributes: ["id", "name"],
+            },
+          ],
+        },
+        {
+          model: User,
+          as: "approver",
+          attributes: ["id", "firstName", "lastName"],
+        },
+      ],
+      order: [["createdAt", "DESC"]],
+    });
     res.json(leaveRequests);
   } catch (error) {
     console.error(error);
@@ -175,20 +215,43 @@ const getAllLeaveRequests = async (req, res) => {
 // @access  Private/Supervisor
 const getPendingLeaveRequests = async (req, res) => {
   try {
-    let query = { status: "pending" };
+    let where = { status: "pending" };
 
-    // If supervisor, only show requests from their subordinates
-    if (req.user.role === "supervisor") {
-      const subordinates = await User.find({ supervisor: req.user._id }).select(
-        "_id"
-      );
-      const subordinateIds = subordinates.map((s) => s._id);
-      query.employee = { $in: subordinateIds };
+    // If supervisor (head), only show requests from their subordinates
+    if (req.user.role === "head") {
+      const subordinates = await User.findAll({
+        where: { supervisorId: req.user.id },
+        attributes: ["id"],
+      });
+      const subordinateIds = subordinates.map((s) => s.id);
+      where.userId = { [Op.in]: subordinateIds };
     }
 
-    const leaveRequests = await LeaveRequest.find(query)
-      .populate("employee", "firstName lastName email department position")
-      .sort({ createdAt: -1 });
+    const leaveRequests = await LeaveRequest.findAll({
+      where,
+      include: [
+        {
+          model: User,
+          as: "user",
+          attributes: [
+            "id",
+            "employeeId",
+            "firstName",
+            "lastName",
+            "email",
+            "position",
+          ],
+          include: [
+            {
+              model: Department,
+              as: "department",
+              attributes: ["id", "name"],
+            },
+          ],
+        },
+      ],
+      order: [["createdAt", "DESC"]],
+    });
     res.json(leaveRequests);
   } catch (error) {
     console.error(error);
@@ -201,7 +264,14 @@ const getPendingLeaveRequests = async (req, res) => {
 // @access  Private/Supervisor
 const approveLeaveRequest = async (req, res) => {
   try {
-    const leaveRequest = await LeaveRequest.findById(req.params.id);
+    const leaveRequest = await LeaveRequest.findByPk(req.params.id, {
+      include: [
+        {
+          model: User,
+          as: "user",
+        },
+      ],
+    });
 
     if (!leaveRequest) {
       return res.status(404).json({ message: "Leave request not found" });
@@ -214,32 +284,57 @@ const approveLeaveRequest = async (req, res) => {
     }
 
     // Deduct leave balance
-    const employee = await User.findById(leaveRequest.employee);
-    employee.leaveBalance[leaveRequest.leaveType] -= leaveRequest.totalDays;
-    await employee.save();
+    const employeeBalance = await LeaveBalance.findOne({
+      where: { userId: leaveRequest.userId },
+    });
+
+    if (
+      employeeBalance &&
+      employeeBalance[leaveRequest.leaveType] !== undefined
+    ) {
+      await employeeBalance.update({
+        [leaveRequest.leaveType]:
+          employeeBalance[leaveRequest.leaveType] - leaveRequest.totalDays,
+      });
+    }
 
     // Update leave request
-    leaveRequest.status = "approved";
-    leaveRequest.approvedBy = req.user._id;
-    leaveRequest.approvalDate = new Date();
-    leaveRequest.approvalNote = req.body.note || "";
+    await leaveRequest.update({
+      status: "approved",
+      approvedBy: req.user.id,
+      approvedAt: new Date(),
+      rejectionReason: req.body.note || "",
+    });
 
-    await leaveRequest.save();
-
-    // Create notification for employee
+    // Create Notification for User
     await Notification.create({
-      user: leaveRequest.employee,
+      userId: leaveRequest.userId,
       type: "approval",
       title: "คำขอลาได้รับการอนุมัติ",
-      message: `คำขอลา${getLeaveTypeName(
+      message: `คำขอลา ${getLeaveTypeName(
         leaveRequest.leaveType
-      )}ของคุณได้รับการอนุมัติแล้ว`,
-      relatedLeave: leaveRequest._id,
+      )} ของคุณได้รับการอนุมัติแล้ว`,
+      relatedLeaveId: leaveRequest.id,
+      isRead: false,
     });
-    // Send approval email
-    sendApprovalEmail(employee, leaveRequest, true, req.body.note);
 
-    res.json(leaveRequest);
+    // Refetch with associations
+    const updatedRequest = await LeaveRequest.findByPk(leaveRequest.id, {
+      include: [
+        {
+          model: User,
+          as: "user",
+          attributes: ["id", "firstName", "lastName", "email"],
+        },
+        {
+          model: User,
+          as: "approver",
+          attributes: ["id", "firstName", "lastName"],
+        },
+      ],
+    });
+
+    res.json(updatedRequest);
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server error", error: error.message });
@@ -251,7 +346,7 @@ const approveLeaveRequest = async (req, res) => {
 // @access  Private/Supervisor
 const rejectLeaveRequest = async (req, res) => {
   try {
-    const leaveRequest = await LeaveRequest.findById(req.params.id);
+    const leaveRequest = await LeaveRequest.findByPk(req.params.id);
 
     if (!leaveRequest) {
       return res.status(404).json({ message: "Leave request not found" });
@@ -263,30 +358,42 @@ const rejectLeaveRequest = async (req, res) => {
         .json({ message: "Leave request has already been processed" });
     }
 
-    leaveRequest.status = "rejected";
-    leaveRequest.approvedBy = req.user._id;
-    leaveRequest.approvalDate = new Date();
-    leaveRequest.approvalNote = req.body.note || "";
+    await leaveRequest.update({
+      status: "rejected",
+      approvedBy: req.user.id,
+      approvedAt: new Date(),
+      rejectionReason: req.body.note || "",
+    });
 
-    await leaveRequest.save();
-
-    // Get employee for email
-    const employee = await User.findById(leaveRequest.employee);
-
-    // Create notification for employee
+    // Create Notification for User
     await Notification.create({
-      user: leaveRequest.employee,
+      userId: leaveRequest.userId,
       type: "rejection",
       title: "คำขอลาถูกปฏิเสธ",
-      message: `คำขอลา${getLeaveTypeName(
+      message: `คำขอลา ${getLeaveTypeName(
         leaveRequest.leaveType
-      )}ของคุณถูกปฏิเสธ${req.body.note ? ": " + req.body.note : ""}`,
-      relatedLeave: leaveRequest._id,
+      )} ของคุณถูกปฏิเสธ`,
+      relatedLeaveId: leaveRequest.id,
+      isRead: false,
     });
-    // Send rejection email
-    sendApprovalEmail(employee, leaveRequest, false, req.body.note);
 
-    res.json(leaveRequest);
+    // Refetch with associations
+    const updatedRequest = await LeaveRequest.findByPk(leaveRequest.id, {
+      include: [
+        {
+          model: User,
+          as: "user",
+          attributes: ["id", "firstName", "lastName", "email"],
+        },
+        {
+          model: User,
+          as: "approver",
+          attributes: ["id", "firstName", "lastName"],
+        },
+      ],
+    });
+
+    res.json(updatedRequest);
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server error", error: error.message });
@@ -298,9 +405,38 @@ const rejectLeaveRequest = async (req, res) => {
 // @access  Private
 const getLeaveRequestById = async (req, res) => {
   try {
-    const leaveRequest = await LeaveRequest.findById(req.params.id)
-      .populate("employee", "firstName lastName email department position")
-      .populate("approvedBy", "firstName lastName");
+    const leaveRequest = await LeaveRequest.findByPk(req.params.id, {
+      include: [
+        {
+          model: User,
+          as: "user",
+          attributes: [
+            "id",
+            "employeeId",
+            "firstName",
+            "lastName",
+            "email",
+            "position",
+          ],
+          include: [
+            {
+              model: Department,
+              as: "department",
+              attributes: ["id", "name"],
+            },
+          ],
+        },
+        {
+          model: User,
+          as: "approver",
+          attributes: ["id", "firstName", "lastName"],
+        },
+        {
+          model: LeaveAttachment,
+          as: "attachments",
+        },
+      ],
+    });
 
     if (!leaveRequest) {
       return res.status(404).json({ message: "Leave request not found" });
@@ -333,14 +469,14 @@ const getLeaveTypeName = (type) => {
 // @access  Private
 const cancelLeaveRequest = async (req, res) => {
   try {
-    const leaveRequest = await LeaveRequest.findById(req.params.id);
+    const leaveRequest = await LeaveRequest.findByPk(req.params.id);
 
     if (!leaveRequest) {
       return res.status(404).json({ message: "Leave request not found" });
     }
 
     // Check ownership
-    if (leaveRequest.employee.toString() !== req.user._id.toString()) {
+    if (leaveRequest.userId !== req.user.id) {
       return res
         .status(403)
         .json({ message: "Not authorized to cancel this request" });
@@ -352,8 +488,7 @@ const cancelLeaveRequest = async (req, res) => {
         .json({ message: "Can only cancel pending requests" });
     }
 
-    leaveRequest.status = "cancelled";
-    await leaveRequest.save();
+    await leaveRequest.update({ status: "cancelled" });
 
     res.json({ message: "คำขอลาถูกยกเลิกเรียบร้อยแล้ว", leaveRequest });
   } catch (error) {
@@ -367,14 +502,14 @@ const cancelLeaveRequest = async (req, res) => {
 // @access  Private
 const updateLeaveRequest = async (req, res) => {
   try {
-    const leaveRequest = await LeaveRequest.findById(req.params.id);
+    const leaveRequest = await LeaveRequest.findByPk(req.params.id);
 
     if (!leaveRequest) {
       return res.status(404).json({ message: "Leave request not found" });
     }
 
     // Check ownership
-    if (leaveRequest.employee.toString() !== req.user._id.toString()) {
+    if (leaveRequest.userId !== req.user.id) {
       return res
         .status(403)
         .json({ message: "Not authorized to update this request" });
@@ -395,20 +530,23 @@ const updateLeaveRequest = async (req, res) => {
     const totalDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
 
     // Check leave balance
-    const user = await User.findById(req.user._id);
-    if (user.leaveBalance[leaveType] < totalDays) {
+    const userBalance = await LeaveBalance.findOne({
+      where: { userId: req.user.id },
+    });
+
+    if (userBalance && userBalance[leaveType] < totalDays) {
       return res.status(400).json({
-        message: `Insufficient leave balance. You have ${user.leaveBalance[leaveType]} days remaining.`,
+        message: `Insufficient leave balance. You have ${userBalance[leaveType]} days remaining.`,
       });
     }
 
-    leaveRequest.leaveType = leaveType;
-    leaveRequest.startDate = startDate;
-    leaveRequest.endDate = endDate;
-    leaveRequest.totalDays = totalDays;
-    leaveRequest.reason = reason;
-
-    await leaveRequest.save();
+    await leaveRequest.update({
+      leaveType,
+      startDate,
+      endDate,
+      totalDays,
+      reason,
+    });
 
     res.json({ message: "อัปเดตคำขอลาเรียบร้อยแล้ว", leaveRequest });
   } catch (error) {
@@ -422,31 +560,66 @@ const updateLeaveRequest = async (req, res) => {
 // @access  Private
 const getTeamLeaveRequests = async (req, res) => {
   try {
-    const user = await User.findById(req.user._id);
+    const user = await User.findByPk(req.user.id, {
+      include: [
+        {
+          model: Department,
+          as: "department",
+        },
+      ],
+    });
 
     // Get users in the same department or with same supervisor
-    let teamQuery = {};
+    let teamWhere = {};
 
-    if (user.supervisor) {
+    if (user.supervisorId) {
       // Get colleagues with the same supervisor
-      teamQuery = {
-        $or: [{ supervisor: user.supervisor }, { _id: user.supervisor }],
+      teamWhere = {
+        [Op.or]: [
+          { supervisorId: user.supervisorId },
+          { id: user.supervisorId },
+        ],
       };
-    } else {
+    } else if (user.departmentId) {
       // Get users in the same department
-      teamQuery = { department: user.department };
+      teamWhere = { departmentId: user.departmentId };
     }
 
-    const teamMembers = await User.find(teamQuery).select("_id");
-    const teamIds = teamMembers.map((m) => m._id);
+    const teamMembers = await User.findAll({
+      where: teamWhere,
+      attributes: ["id"],
+    });
+    const teamIds = teamMembers.map((m) => m.id);
 
-    const leaveRequests = await LeaveRequest.find({
-      employee: { $in: teamIds },
-      status: "approved",
-    })
-      .populate("employee", "firstName lastName department")
-      .select("-reason -attachments -approvalNote")
-      .sort({ startDate: -1 });
+    const leaveRequests = await LeaveRequest.findAll({
+      where: {
+        userId: { [Op.in]: teamIds },
+        status: "approved",
+      },
+      include: [
+        {
+          model: User,
+          as: "user",
+          attributes: ["id", "firstName", "lastName"],
+          include: [
+            {
+              model: Department,
+              as: "department",
+              attributes: ["id", "name"],
+            },
+          ],
+        },
+      ],
+      attributes: {
+        exclude: [
+          "reason",
+          "rejectionReason",
+          "contactAddress",
+          "contactPhone",
+        ],
+      },
+      order: [["startDate", "DESC"]],
+    });
 
     res.json(leaveRequests);
   } catch (error) {

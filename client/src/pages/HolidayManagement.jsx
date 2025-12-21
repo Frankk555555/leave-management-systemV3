@@ -1,9 +1,18 @@
 import React, { useState, useEffect } from "react";
 import { holidaysAPI } from "../services/api";
+import { useToast } from "../components/common/Toast";
 import Navbar from "../components/common/Navbar";
+import {
+  FaCalendarAlt,
+  FaCalendarPlus,
+  FaPlus,
+  FaEdit,
+  FaTrash,
+} from "react-icons/fa";
 import "./HolidayManagement.css";
 
 const HolidayManagement = () => {
+  const toast = useToast();
   const [holidays, setHolidays] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
@@ -30,12 +39,16 @@ const HolidayManagement = () => {
   };
 
   const handleInitialize = async () => {
-    if (!window.confirm("ต้องการเพิ่มวันหยุดราชการประจำปีหรือไม่?")) return;
+    const confirmed = await toast.confirm(
+      "ต้องการเพิ่มวันหยุดราชการประจำปีหรือไม่?"
+    );
+    if (!confirmed) return;
     try {
       await holidaysAPI.initialize();
       fetchHolidays();
+      toast.success("เพิ่มวันหยุดราชการเรียบร้อยแล้ว");
     } catch (error) {
-      alert(error.response?.data?.message || "เกิดข้อผิดพลาด");
+      toast.error(error.response?.data?.message || "เกิดข้อผิดพลาด");
     }
   };
 
@@ -69,24 +82,31 @@ const HolidayManagement = () => {
     e.preventDefault();
     try {
       if (editingHoliday) {
-        await holidaysAPI.update(editingHoliday._id, formData);
+        await holidaysAPI.update(
+          editingHoliday.id || editingHoliday._id,
+          formData
+        );
+        toast.success("แก้ไขวันหยุดเรียบร้อยแล้ว");
       } else {
         await holidaysAPI.create(formData);
+        toast.success("เพิ่มวันหยุดเรียบร้อยแล้ว");
       }
       fetchHolidays();
       setModalOpen(false);
     } catch (error) {
-      alert(error.response?.data?.message || "เกิดข้อผิดพลาด");
+      toast.error(error.response?.data?.message || "เกิดข้อผิดพลาด");
     }
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm("คุณต้องการลบวันหยุดนี้หรือไม่?")) return;
+    const confirmed = await toast.confirm("คุณต้องการลบวันหยุดนี้หรือไม่?");
+    if (!confirmed) return;
     try {
       await holidaysAPI.delete(id);
       fetchHolidays();
+      toast.success("ลบวันหยุดเรียบร้อยแล้ว");
     } catch (error) {
-      alert(error.response?.data?.message || "เกิดข้อผิดพลาด");
+      toast.error(error.response?.data?.message || "เกิดข้อผิดพลาด");
     }
   };
 
@@ -116,29 +136,34 @@ const HolidayManagement = () => {
       <div className="holiday-management-page">
         <div className="page-header">
           <div>
-            <h1>🎉 จัดการวันหยุด</h1>
+            <h1>
+              <FaCalendarAlt style={{ marginRight: "10px" }} /> จัดการวันหยุด
+            </h1>
             <p>จัดการวันหยุดราชการ ({holidays.length} วัน)</p>
           </div>
           <div className="header-actions">
             <button className="init-btn" onClick={handleInitialize}>
-              📅 เพิ่มวันหยุดราชการประจำปี
+              <FaCalendarPlus style={{ marginRight: "6px" }} />{" "}
+              เพิ่มวันหยุดราชการประจำปี
             </button>
             <button className="add-btn" onClick={() => openModal()}>
-              ➕ เพิ่มวันหยุด
+              <FaPlus style={{ marginRight: "6px" }} /> เพิ่มวันหยุด
             </button>
           </div>
         </div>
 
         {holidays.length === 0 ? (
           <div className="empty-state">
-            <span className="empty-icon">📅</span>
+            <span className="empty-icon">
+              <FaCalendarAlt size={48} />
+            </span>
             <h3>ยังไม่มีวันหยุด</h3>
             <p>คลิก "เพิ่มวันหยุดราชการประจำปี" เพื่อเริ่มต้น</p>
           </div>
         ) : (
           <div className="holidays-grid">
             {holidays.map((holiday) => (
-              <div key={holiday._id} className="holiday-card">
+              <div key={holiday.id || holiday._id} className="holiday-card">
                 <div className="holiday-date">
                   <span className="date-day">
                     {new Date(holiday.date).getDate()}
@@ -161,13 +186,13 @@ const HolidayManagement = () => {
                     className="edit-btn"
                     onClick={() => openModal(holiday)}
                   >
-                    ✏️
+                    <FaEdit />
                   </button>
                   <button
                     className="delete-btn"
-                    onClick={() => handleDelete(holiday._id)}
+                    onClick={() => handleDelete(holiday.id || holiday._id)}
                   >
-                    🗑️
+                    <FaTrash />
                   </button>
                 </div>
               </div>
@@ -178,7 +203,17 @@ const HolidayManagement = () => {
         {modalOpen && (
           <div className="modal-overlay" onClick={() => setModalOpen(false)}>
             <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-              <h3>{editingHoliday ? "✏️ แก้ไขวันหยุด" : "➕ เพิ่มวันหยุด"}</h3>
+              <h3>
+                {editingHoliday ? (
+                  <>
+                    <FaEdit style={{ marginRight: "8px" }} /> แก้ไขวันหยุด
+                  </>
+                ) : (
+                  <>
+                    <FaPlus style={{ marginRight: "8px" }} /> เพิ่มวันหยุด
+                  </>
+                )}
+              </h3>
               <form onSubmit={handleSubmit}>
                 <div className="form-group">
                   <label>ชื่อวันหยุด</label>

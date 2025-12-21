@@ -1,27 +1,35 @@
-const mongoose = require("mongoose");
+// ============================================
+// Holiday Model (Sequelize)
+// ============================================
 
-const holidaySchema = new mongoose.Schema(
+const { DataTypes } = require("sequelize");
+const { sequelize } = require("../config/database");
+
+const Holiday = sequelize.define(
+  "Holiday",
   {
+    id: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true,
+    },
     name: {
-      type: String,
-      required: true,
+      type: DataTypes.STRING(200),
+      allowNull: false,
     },
     date: {
-      type: Date,
-      required: true,
+      type: DataTypes.DATEONLY,
+      allowNull: false,
     },
     description: {
-      type: String,
-      default: "",
-    },
-    isActive: {
-      type: Boolean,
-      default: true,
+      type: DataTypes.TEXT,
     },
   },
   {
+    tableName: "holidays",
     timestamps: true,
+    underscored: true,
   }
 );
 
-module.exports = mongoose.model("Holiday", holidaySchema);
+module.exports = Holiday;

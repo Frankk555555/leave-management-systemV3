@@ -1,9 +1,25 @@
 import React, { useState, useEffect } from "react";
 import { leaveTypesAPI } from "../services/api";
+import { useToast } from "../components/common/Toast";
 import Navbar from "../components/common/Navbar";
+import {
+  FaHospital,
+  FaClipboardList,
+  FaUmbrellaBeach,
+  FaBaby,
+  FaUserFriends,
+  FaChild,
+  FaPray,
+  FaMedal,
+  FaFileAlt,
+  FaSyncAlt,
+  FaEdit,
+  FaPlus,
+} from "react-icons/fa";
 import "./LeaveTypeManagement.css";
 
 const LeaveTypeManagement = () => {
+  const toast = useToast();
   const [leaveTypes, setLeaveTypes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
@@ -31,12 +47,16 @@ const LeaveTypeManagement = () => {
   };
 
   const handleInitialize = async () => {
-    if (!window.confirm("ต้องการเพิ่มประเภทการลาเริ่มต้นหรือไม่?")) return;
+    const confirmed = await toast.confirm(
+      "ต้องการเพิ่มประเภทการลาเริ่มต้นหรือไม่?"
+    );
+    if (!confirmed) return;
     try {
       await leaveTypesAPI.initialize();
       fetchLeaveTypes();
+      toast.success("เพิ่มประเภทการลาเริ่มต้นเรียบร้อยแล้ว");
     } catch (error) {
-      alert(error.response?.data?.message || "เกิดข้อผิดพลาด");
+      toast.error(error.response?.data?.message || "เกิดข้อผิดพลาด");
     }
   };
 
@@ -73,37 +93,56 @@ const LeaveTypeManagement = () => {
     e.preventDefault();
     try {
       if (editingType) {
-        await leaveTypesAPI.update(editingType._id, formData);
+        await leaveTypesAPI.update(editingType.id || editingType._id, formData);
+        toast.success("แก้ไขประเภทการลาเรียบร้อยแล้ว");
       } else {
         await leaveTypesAPI.create(formData);
+        toast.success("เพิ่มประเภทการลาเรียบร้อยแล้ว");
       }
       fetchLeaveTypes();
       setModalOpen(false);
     } catch (error) {
-      alert(error.response?.data?.message || "เกิดข้อผิดพลาด");
+      toast.error(error.response?.data?.message || "เกิดข้อผิดพลาด");
     }
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm("คุณต้องการลบประเภทการลานี้หรือไม่?")) return;
+    const confirmed = await toast.confirm("คุณต้องการลบประเภทการลานี้หรือไม่?");
+    if (!confirmed) return;
     try {
       await leaveTypesAPI.delete(id);
       fetchLeaveTypes();
+      toast.success("ลบประเภทการลาเรียบร้อยแล้ว");
     } catch (error) {
-      alert(error.response?.data?.message || "เกิดข้อผิดพลาด");
+      toast.error(error.response?.data?.message || "เกิดข้อผิดพลาด");
     }
   };
 
   const getTypeIcon = (code) => {
-    const icons = { sick: "🏥", personal: "📋", vacation: "🏖️" };
-    return icons[code] || "📝";
+    const iconProps = { size: 24, color: "white" };
+    const icons = {
+      sick: <FaHospital {...iconProps} />,
+      personal: <FaClipboardList {...iconProps} />,
+      vacation: <FaUmbrellaBeach {...iconProps} />,
+      maternity: <FaBaby {...iconProps} />,
+      paternity: <FaUserFriends {...iconProps} />,
+      childcare: <FaChild {...iconProps} />,
+      ordination: <FaPray {...iconProps} />,
+      military: <FaMedal {...iconProps} />,
+    };
+    return icons[code] || <FaFileAlt {...iconProps} />;
   };
 
   const getTypeColor = (code) => {
     const colors = {
-      sick: "linear-gradient(135deg, #11998e, #38ef7d)",
-      personal: "linear-gradient(135deg, #667eea, #764ba2)",
-      vacation: "linear-gradient(135deg, #f6d365, #fda085)",
+      sick: "linear-gradient(135deg, #059669, #10b981)",
+      personal: "linear-gradient(135deg, #6366f1, #8b5cf6)",
+      vacation: "linear-gradient(135deg, #f59e0b, #fbbf24)",
+      maternity: "linear-gradient(135deg, #ec4899, #f472b6)",
+      paternity: "linear-gradient(135deg, #0891b2, #22d3ee)",
+      childcare: "linear-gradient(135deg, #14b8a6, #5eead4)",
+      ordination: "linear-gradient(135deg, #ea580c, #fb923c)",
+      military: "linear-gradient(135deg, #3b82f6, #60a5fa)",
     };
     return colors[code] || colors.sick;
   };
@@ -125,26 +164,30 @@ const LeaveTypeManagement = () => {
       <div className="leave-type-management-page">
         <div className="page-header">
           <div>
-            <h1>📝 จัดการประเภทการลา</h1>
+            <h1>
+              <FaFileAlt style={{ marginRight: "10px" }} /> จัดการประเภทการลา
+            </h1>
             <p>กำหนดประเภทและจำนวนวันลา</p>
           </div>
           <div className="header-actions">
             <button className="init-btn" onClick={handleInitialize}>
-              🔄 รีเซ็ตเป็นค่าเริ่มต้น
+              <FaSyncAlt style={{ marginRight: "6px" }} /> รีเซ็ตเป็นค่าเริ่มต้น
             </button>
           </div>
         </div>
 
         {leaveTypes.length === 0 ? (
           <div className="empty-state">
-            <span className="empty-icon">📝</span>
+            <span className="empty-icon">
+              <FaFileAlt size={48} />
+            </span>
             <h3>ยังไม่มีประเภทการลา</h3>
             <p>คลิก "รีเซ็ตเป็นค่าเริ่มต้น" เพื่อเริ่มต้น</p>
           </div>
         ) : (
           <div className="leave-types-grid">
             {leaveTypes.map((type) => (
-              <div key={type._id} className="leave-type-card">
+              <div key={type.id || type._id} className="leave-type-card">
                 <div
                   className="type-header"
                   style={{ background: getTypeColor(type.code) }}
@@ -160,11 +203,10 @@ const LeaveTypeManagement = () => {
                   <p className="type-description">
                     {type.description || "ไม่มีคำอธิบาย"}
                   </p>
-                  <div className="type-code">รหัส: {type.code}</div>
                 </div>
                 <div className="type-actions">
                   <button className="edit-btn" onClick={() => openModal(type)}>
-                    ✏️ แก้ไข
+                    <FaEdit style={{ marginRight: "4px" }} /> แก้ไข
                   </button>
                 </div>
               </div>
@@ -176,7 +218,15 @@ const LeaveTypeManagement = () => {
           <div className="modal-overlay" onClick={() => setModalOpen(false)}>
             <div className="modal-content" onClick={(e) => e.stopPropagation()}>
               <h3>
-                {editingType ? "✏️ แก้ไขประเภทการลา" : "➕ เพิ่มประเภทการลา"}
+                {editingType ? (
+                  <>
+                    <FaEdit style={{ marginRight: "8px" }} /> แก้ไขประเภทการลา
+                  </>
+                ) : (
+                  <>
+                    <FaPlus style={{ marginRight: "8px" }} /> เพิ่มประเภทการลา
+                  </>
+                )}
               </h3>
               <form onSubmit={handleSubmit}>
                 <div className="form-group">
@@ -201,7 +251,16 @@ const LeaveTypeManagement = () => {
                     >
                       <option value="sick">sick (ลาป่วย)</option>
                       <option value="personal">personal (ลากิจ)</option>
-                      <option value="vacation">vacation (ลาพักร้อน)</option>
+                      <option value="vacation">vacation (ลาพักผ่อน)</option>
+                      <option value="maternity">maternity (ลาคลอดบุตร)</option>
+                      <option value="paternity">
+                        paternity (ลาช่วยภรรยาคลอด)
+                      </option>
+                      <option value="childcare">
+                        childcare (ลาเลี้ยงดูบุตร)
+                      </option>
+                      <option value="ordination">ordination (ลาอุปสมบท)</option>
+                      <option value="military">military (ลาตรวจเลือก)</option>
                     </select>
                   </div>
                   <div className="form-group">
