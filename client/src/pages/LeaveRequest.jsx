@@ -2,6 +2,7 @@ import React, { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { leaveRequestsAPI } from "../services/api";
 import { useAuth } from "../context/AuthContext";
+import { useToast } from "../components/common/Toast";
 import Navbar from "../components/common/Navbar";
 import "./LeaveRequest.css";
 
@@ -26,6 +27,7 @@ import {
 const LeaveRequest = () => {
   const { user, updateUser } = useAuth();
   const navigate = useNavigate();
+  const toast = useToast();
   const fileInputRef = useRef(null);
 
   const [formData, setFormData] = useState({
@@ -119,7 +121,7 @@ const LeaveRequest = () => {
 
     const days = calculateDays();
     if (days <= 0) {
-      setError("กรุณาเลือกวันที่ให้ถูกต้อง");
+      toast.warning("กรุณาเลือกวันที่ให้ถูกต้อง");
       return;
     }
 
@@ -264,7 +266,7 @@ const LeaveRequest = () => {
       <div className="leave-request-page">
         <div className="page-header">
           <h1>
-            <FaEdit style={{ marginRight: "0.5rem" }} /> ยื่นคำขอลา
+              ยื่นคำขอลา
           </h1>
           <p>กรอกข้อมูลการลาของคุณ</p>
         </div>

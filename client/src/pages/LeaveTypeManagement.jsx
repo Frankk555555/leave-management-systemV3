@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { leaveTypesAPI } from "../services/api";
+import { leaveTypesAPI, reportsAPI } from "../services/api";
 import { useToast } from "../components/common/Toast";
 import Navbar from "../components/common/Navbar";
 import {
@@ -43,6 +43,28 @@ const LeaveTypeManagement = () => {
       console.error("Error fetching leave types:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // รีเซ็ตวันลาของบุคลากรทุกคน
+  const [resetting, setResetting] = useState(false);
+
+  const handleResetYearly = async () => {
+    const confirmed = await toast.confirm(
+      "คุณแน่ใจหรือไม่ที่จะรีเซ็ตวันลาของบุคลากรทุกคน?",
+      "ยืนยันการรีเซ็ตวันลา"
+    );
+    if (!confirmed) return;
+    setResetting(true);
+    try {
+      const response = await reportsAPI.resetYearly();
+      toast.success(
+        `${response.data.message} อัปเดตแล้ว ${response.data.updatedCount} คน`
+      );
+    } catch (error) {
+      toast.error("เกิดข้อผิดพลาด");
+    } finally {
+      setResetting(false);
     }
   };
 
@@ -164,14 +186,20 @@ const LeaveTypeManagement = () => {
       <div className="leave-type-management-page">
         <div className="page-header">
           <div>
-            <h1>
-              <FaFileAlt style={{ marginRight: "10px" }} /> จัดการประเภทการลา
-            </h1>
+            <h1>จัดการประเภทการลา</h1>
             <p>กำหนดประเภทและจำนวนวันลา</p>
           </div>
           <div className="header-actions">
             <button className="init-btn" onClick={handleInitialize}>
               <FaSyncAlt style={{ marginRight: "6px" }} /> รีเซ็ตเป็นค่าเริ่มต้น
+            </button>
+            <button
+              className="reset-btn"
+              onClick={handleResetYearly}
+              disabled={resetting}
+            >
+              <FaSyncAlt style={{ marginRight: "6px" }} />
+              {resetting ? "กำลังรีเซ็ต..." : "รีเซ็ตวันลาบุคลากร"}
             </button>
           </div>
         </div>

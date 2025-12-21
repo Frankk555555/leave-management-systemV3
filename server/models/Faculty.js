@@ -1,23 +1,18 @@
 // ============================================
-// Department Model (Sequelize)
+// Faculty Model (Sequelize)
+// คณะ/สำนัก/สถาบัน
 // ============================================
 
 const { DataTypes } = require("sequelize");
 const { sequelize } = require("../config/database");
 
-const Department = sequelize.define(
-  "Department",
+const Faculty = sequelize.define(
+  "Faculty",
   {
     id: {
       type: DataTypes.INTEGER,
       primaryKey: true,
       autoIncrement: true,
-    },
-    facultyId: {
-      type: DataTypes.INTEGER,
-      allowNull: true,
-      field: "faculty_id",
-      comment: "FK to faculties table",
     },
     name: {
       type: DataTypes.STRING(150),
@@ -27,12 +22,17 @@ const Department = sequelize.define(
       type: DataTypes.STRING(50),
       unique: true,
     },
+    type: {
+      type: DataTypes.ENUM("faculty", "office", "institute"),
+      defaultValue: "faculty",
+      comment: "faculty=คณะ, office=สำนัก, institute=สถาบัน",
+    },
   },
   {
-    tableName: "departments",
+    tableName: "faculties",
     timestamps: true,
     underscored: true,
   }
 );
 
-module.exports = Department;
+module.exports = Faculty;

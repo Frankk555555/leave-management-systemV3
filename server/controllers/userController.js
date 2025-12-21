@@ -280,6 +280,74 @@ const getSupervisors = async (req, res) => {
   }
 };
 
+// @desc    Update own profile (for regular users)
+// @route   PUT /api/users/profile
+// @access  Private
+const updateProfile = async (req, res) => {
+  try {
+    const user = await User.findByPk(req.user.id);
+
+    if (!user) {
+      return res.status(404).json({ message: "ไม่พบผู้ใช้" });
+    }
+
+    const { firstName, lastName, email, phone, password } = req.body;
+
+    // Update allowed fields only
+    if (firstName) user.firstName = firstName;
+    if (lastName) user.lastName = lastName;
+    if (email) user.email = email;
+    if (phone !== undefined) user.phone = phone;
+    if (password && password.trim() !== "") {
+      user.password = password; // Will be hashed by beforeUpdate hook
+    }
+
+    await user.save();
+
+    // Return user without password
+    const updatedUser = await User.findByPk(req.user.id, {
+      attributes: { exclude: ["password"] },
+      include: [
+        { model: LeaveBalance, as: "leaveBalance" },
+        { model: Department, as: "department" },
+      ],
+    });
+
+    res.json({ message: "อัปเดตโปรไฟล์เรียบร้อยแล้ว", user: updatedUser });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+// @desc    Update profile image
+// @route   PUT /api/users/profile/image
+// @access  Private
+const updateProfileImage = async (req, res) => {
+  try {
+    const user = await User.findByPk(req.user.id);
+
+    if (!user) {
+      return res.status(404).json({ message: "ไม่พบผู้ใช้" });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ message: "กรุณาอัปโหลดรูปภาพ" });
+    }
+
+    user.profileImage = `/uploads/profiles/${req.file.filename}`;
+    await user.save();
+
+    res.json({
+      message: "อัปเดตรูปโปรไฟล์เรียบร้อยแล้ว",
+      profileImage: user.profileImage,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
 module.exports = {
   getUsers,
   getUserById,
@@ -287,4 +355,6 @@ module.exports = {
   updateUser,
   deleteUser,
   getSupervisors,
+  updateProfile,
+  updateProfileImage,
 };

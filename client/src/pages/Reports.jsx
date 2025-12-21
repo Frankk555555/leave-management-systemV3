@@ -204,9 +204,7 @@ const Reports = () => {
       <div className="reports-page">
         <div className="page-header">
           <div>
-            <h1>
-              <FaChartBar style={{ marginRight: "10px" }} /> รายงานและสถิติ
-            </h1>
+            <h1>รายงานและสถิติ</h1>
             <p>ภาพรวมการลาของบุคลากรในองค์กร</p>
           </div>
           <div className="header-actions">
@@ -238,20 +236,13 @@ const Reports = () => {
             >
               <FaFilePdf style={{ marginRight: "4px" }} /> PDF
             </button>
-            <button
-              className="reset-btn"
-              onClick={handleResetYearly}
-              disabled={resetting}
-            >
-              <FaSyncAlt style={{ marginRight: "4px" }} /> รีเซ็ตวันลา
-            </button>
           </div>
         </div>
 
         <div className="stats-grid">
           <div className="stat-card">
             <span className="stat-icon">
-              <FaFileAlt size={24} />
+              <FaFileAlt color="white" size={24} />
             </span>
             <div className="stat-info">
               <h3>{statistics?.totalRequests || 0}</h3>
@@ -260,7 +251,7 @@ const Reports = () => {
           </div>
           <div className="stat-card">
             <span className="stat-icon">
-              <FaCalendarAlt size={24} />
+              <FaCalendarAlt color="white" size={24} />
             </span>
             <div className="stat-info">
               <h3>{statistics?.totalDays || 0}</h3>
@@ -269,7 +260,7 @@ const Reports = () => {
           </div>
           <div className="stat-card">
             <span className="stat-icon">
-              <FaUsers size={24} />
+              <FaUsers color="white" size={24} />
             </span>
             <div className="stat-info">
               <h3>{statistics?.totalEmployees || 0}</h3>
@@ -278,7 +269,7 @@ const Reports = () => {
           </div>
           <div className="stat-card">
             <span className="stat-icon">
-              <FaCheckCircle size={24} />
+              <FaCheckCircle color="white" size={24} />
             </span>
             <div className="stat-info">
               <h3>{statistics?.byStatus?.approved || 0}</h3>

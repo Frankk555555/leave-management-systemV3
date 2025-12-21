@@ -137,7 +137,7 @@ const HolidayManagement = () => {
         <div className="page-header">
           <div>
             <h1>
-              <FaCalendarAlt style={{ marginRight: "10px" }} /> จัดการวันหยุด
+              จัดการวันหยุด
             </h1>
             <p>จัดการวันหยุดราชการ ({holidays.length} วัน)</p>
           </div>

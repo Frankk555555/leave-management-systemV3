@@ -229,7 +229,7 @@ const LeaveHistory = () => {
         <div className="page-header">
           <div>
             <h1>
-              <FaClipboardList style={{ marginRight: "0.5rem" }} /> ประวัติการลา
+              ประวัติการลา
             </h1>
             <p>รายการคำขอลาทั้งหมดของคุณ</p>
           </div>
@@ -415,9 +415,9 @@ const LeaveHistory = () => {
                       setEditForm({ ...editForm, leaveType: e.target.value })
                     }
                   >
-                    <option value="sick">🏥 ลาป่วย</option>
-                    <option value="personal">📋 ลากิจ</option>
-                    <option value="vacation">🏖️ ลาพักร้อน</option>
+                    <option value="sick"> ลาป่วย</option>
+                    <option value="personal"> ลากิจ</option>
+                    <option value="vacation"> ลาพักร้อน</option>
                   </select>
                 </div>
                 <div className="form-row">

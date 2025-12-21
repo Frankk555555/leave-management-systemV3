@@ -14,6 +14,7 @@ import UserManagement from "./pages/UserManagement";
 import HolidayManagement from "./pages/HolidayManagement";
 import LeaveTypeManagement from "./pages/LeaveTypeManagement";
 import Reports from "./pages/Reports";
+import Profile from "./pages/Profile";
 import "./index.css";
 
 function App() {
@@ -110,6 +111,15 @@ function App() {
               element={
                 <ProtectedRoute adminOnly>
                   <LeaveTypeManagement />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/profile"
+              element={
+                <ProtectedRoute>
+                  <Profile />
                 </ProtectedRoute>
               }
             />

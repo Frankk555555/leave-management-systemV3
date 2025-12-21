@@ -37,6 +37,8 @@ app.use("/api/holidays", require("./routes/holidays"));
 app.use("/api/notifications", require("./routes/notifications"));
 app.use("/api/reports", require("./routes/reports"));
 app.use("/api/webhooks", require("./routes/webhooks"));
+app.use("/api/departments", require("./routes/departments"));
+app.use("/api/faculties", require("./routes/faculties"));
 
 // Health check
 app.get("/api/health", (req, res) => {

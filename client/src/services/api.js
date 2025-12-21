@@ -33,6 +33,12 @@ export const usersAPI = {
   update: (id, data) => api.put(`/users/${id}`, data),
   delete: (id) => api.delete(`/users/${id}`),
   getSupervisors: () => api.get("/users/supervisors"),
+  // Profile APIs (for users to edit their own profile)
+  updateProfile: (data) => api.put("/users/profile", data),
+  updateProfileImage: (formData) =>
+    api.put("/users/profile/image", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    }),
 };
 
 // Leave Requests API
@@ -94,6 +100,24 @@ export const reportsAPI = {
     }),
   resetYearly: () => api.post("/reports/reset-yearly"),
   getAllRequests: (params) => api.get("/reports/all-requests", { params }),
+};
+
+// Departments API (สาขาวิชา/หน่วยงาน)
+export const departmentsAPI = {
+  getAll: (facultyId) => api.get("/departments", { params: { facultyId } }),
+  create: (data) => api.post("/departments", data),
+  update: (id, data) => api.put(`/departments/${id}`, data),
+  delete: (id) => api.delete(`/departments/${id}`),
+  initialize: () => api.post("/departments/initialize"),
+};
+
+// Faculties API (คณะ/สำนัก/สถาบัน)
+export const facultiesAPI = {
+  getAll: () => api.get("/faculties"),
+  create: (data) => api.post("/faculties", data),
+  update: (id, data) => api.put(`/faculties/${id}`, data),
+  delete: (id) => api.delete(`/faculties/${id}`),
+  initialize: () => api.post("/faculties/initialize"),
 };
 
 export default api;

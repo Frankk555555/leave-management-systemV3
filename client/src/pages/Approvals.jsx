@@ -145,7 +145,7 @@ const Approvals = () => {
       <div className="approvals-page">
         <div className="page-header">
           <h1>
-            <FaCheckCircle style={{ marginRight: "0.5rem" }} /> อนุมัติการลา
+             อนุมัติการลา
           </h1>
           <p>รายการคำขอลาที่รอการอนุมัติ ({requests.length} รายการ)</p>
         </div>

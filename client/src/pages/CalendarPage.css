@@ -4,6 +4,7 @@
   margin: 0 auto;
 }
 
+
 .calendar-container {
   display: grid;
   grid-template-columns: 1fr 350px;

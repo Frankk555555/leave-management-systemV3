@@ -4,6 +4,7 @@
 // ============================================
 
 const User = require("./User");
+const Faculty = require("./Faculty");
 const Department = require("./Department");
 const LeaveBalance = require("./LeaveBalance");
 const LeaveRequest = require("./LeaveRequest");
@@ -11,6 +12,20 @@ const LeaveAttachment = require("./LeaveAttachment");
 const Holiday = require("./Holiday");
 const LeaveType = require("./LeaveType");
 const Notification = require("./Notification");
+
+// ========================================
+// Faculty - Department Associations
+// ========================================
+// Department belongs to Faculty
+Department.belongsTo(Faculty, {
+  foreignKey: "facultyId",
+  as: "faculty",
+});
+
+Faculty.hasMany(Department, {
+  foreignKey: "facultyId",
+  as: "departments",
+});
 
 // ========================================
 // User Associations
@@ -111,6 +126,7 @@ LeaveRequest.hasMany(Notification, {
 
 module.exports = {
   User,
+  Faculty,
   Department,
   LeaveBalance,
   LeaveRequest,

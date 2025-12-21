@@ -55,6 +55,16 @@ const User = sequelize.define(
       type: DataTypes.INTEGER,
       field: "supervisor_id",
     },
+    phone: {
+      type: DataTypes.STRING(20),
+      allowNull: true,
+    },
+    profileImage: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+      field: "profile_image",
+      comment: "Path to profile image file",
+    },
   },
   {
     tableName: "users",

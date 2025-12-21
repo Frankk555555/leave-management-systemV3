@@ -113,6 +113,19 @@
   opacity: 0.8;
 }
 
+.user-info-link {
+  text-decoration: none;
+  transition: transform 0.2s, opacity 0.2s;
+}
+
+.user-info-link:hover {
+  transform: translateY(-1px);
+}
+
+.user-info-link:hover .user-info {
+  opacity: 0.9;
+}
+
 .logout-btn {
   background: rgba(255, 255, 255, 0.15);
   border: none;
@@ -125,5 +138,5 @@
 }
 
 .logout-btn:hover {
-  background: rgba(255, 255, 255, 0.25);
+  background: rgba(222, 4, 4, 0.944);
 }

@@ -112,7 +112,15 @@
 }
 
 .type-icon {
-  font-size: 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  font-size: 1.1rem;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
 }
 
 .type-name {
@@ -236,12 +244,16 @@
   gap: 0.75rem;
 }
 
+/* Container ของปุ่ม */
 .action-row {
   display: flex;
-  justify-content: flex-end; /* ชิดขวา */
-  gap: 0.75rem;
-  padding-top: 0.75rem; /* เพิ่มระยะห่าง */
-  margin-top: 0.25rem;
+  justify-content: flex-end; /* จัดชิดขวา */
+  align-items: center;       /* จัดกึ่งกลางแนวตั้ง */
+  gap: 10px;                 /* เว้นระยะห่างระหว่างปุ่ม 10px (ปรับเลขนี้ได้ตามชอบ) */
+  flex-wrap: wrap;           /* ถ้าพื้นที่ไม่พอ ให้ปัดลงบรรทัดล่างโดยไม่ซ้อนทับ */
+  
+  padding-top: 12px;
+  margin-top: 8px;
   border-top: 1px dashed #e2e8f0;
 }
 
@@ -249,16 +261,20 @@
   color: #667eea;
 }
 
-/* Action Buttons in Footer */
+/* Style ของปุ่มทุกประเภท */
 .edit-btn,
 .cancel-btn,
 .pdf-btn {
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
-  padding: 0.5rem 1rem;
-  flex-shrink: 0;
+  justify-content: center; /* จัดไอคอนและข้อความให้อยู่กลางปุ่ม */
+  gap: 6px;                /* ระยะห่างระหว่างไอคอนกับตัวหนังสือ */
+  padding: 8px 16px;       /* เพิ่มพื้นที่ในปุ่มให้กดง่ายขึ้น */
+  min-width: 100px;         /* ขนาดขั้นต่ำเท่ากัน */
+  
+  flex-shrink: 0;          /* ห้ามปุ่มหดตัวจนเสียทรง */
   white-space: nowrap;
+  
   border: none;
   border-radius: 8px;
   font-size: 0.85rem;
@@ -266,40 +282,43 @@
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-  margin-right: 0.5rem; /* Explicit spacing */
+  
+  /* ลบ margin-right ออก เพราะเราใช้ gap ใน .action-row แล้ว */
+  margin: 0; 
 }
 
-.edit-btn:last-child,
-.cancel-btn:last-child,
-.pdf-btn:last-child {
-  margin-right: 0;
-}
+/* ไม่จำเป็นต้องใช้ :last-child เพื่อลบ margin แล้ว */
 
+/* สีของปุ่มแก้ไข - พื้นขาว ขอบม่วง ตัวหนังสือม่วง */
 .edit-btn {
-  background: linear-gradient(135deg, #667eea, #764ba2);
-  border: none;
-  color: white;
+  background: white;
+  border: 2px solid #667eea;
+  color: #667eea;
 }
 
 .edit-btn:hover {
-  background: linear-gradient(135deg, #5a67d8, #6b46c1);
+  background: #f0f4ff;
+  border-color: #667eea;
+  color: #fbfbfb;
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
 }
 
+/* สีของปุ่มยกเลิก - พื้นขาว ขอบแดง ตัวหนังสือแดง */
 .cancel-btn {
-  background: linear-gradient(135deg, #f56565, #c53030);
-  border: none;
-  color: white;
+  background: white;
+  border: 2px solid #e53e3e;
+  color: #e53e3e;
 }
 
 .cancel-btn:hover {
-  background: linear-gradient(135deg, #e53e3e, #9b2c2c);
+  background: #fff5f5;
+  border-color: #c53030;
+  color: #c53030;
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(245, 101, 101, 0.4);
 }
 
-/* PDF Download Button */
+/* สีของปุ่ม PDF */
 .pdf-btn {
   background: white;
   border: 1px solid #e2e8f0;

@@ -133,7 +133,7 @@ const Dashboard = () => {
       <div className="dashboard">
         <div className="dashboard-header">
           <h1>
-            สวัสดี, {user?.firstName}!{" "}
+            สวัสดี, คุณ {user?.firstName} {user?.lastName}{" "}
             <FaHandPaper style={{ marginLeft: "0.3rem", color: "#e6c314ff" }} />
           </h1>
           <p>ยินดีต้อนรับเข้าสู่ระบบบริหารการลา</p>

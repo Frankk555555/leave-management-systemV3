@@ -46,22 +46,26 @@ const Navbar = () => {
         >
           <FaChartBar style={{ marginRight: "0.3rem" }} /> แดชบอร์ด
         </NavLink>
-        <NavLink
-          to="/leave-request"
-          className={({ isActive }) =>
-            isActive ? "nav-link active" : "nav-link"
-          }
-        >
-          <FaEdit style={{ marginRight: "0.3rem" }} /> ขอลา
-        </NavLink>
-        <NavLink
-          to="/leave-history"
-          className={({ isActive }) =>
-            isActive ? "nav-link active" : "nav-link"
-          }
-        >
-          <FaClipboardList style={{ marginRight: "0.3rem" }} /> ประวัติการลา
-        </NavLink>
+        {!isAdmin && (
+          <>
+            <NavLink
+              to="/leave-request"
+              className={({ isActive }) =>
+                isActive ? "nav-link active" : "nav-link"
+              }
+            >
+              <FaEdit style={{ marginRight: "0.3rem" }} /> ขอลา
+            </NavLink>
+            <NavLink
+              to="/leave-history"
+              className={({ isActive }) =>
+                isActive ? "nav-link active" : "nav-link"
+              }
+            >
+              <FaClipboardList style={{ marginRight: "0.3rem" }} /> ประวัติการลา
+            </NavLink>
+          </>
+        )}
         <NavLink
           to="/calendar"
           className={({ isActive }) =>
@@ -70,14 +74,16 @@ const Navbar = () => {
         >
           <FaCalendarAlt style={{ marginRight: "0.3rem" }} /> ปฏิทิน
         </NavLink>
-        <NavLink
-          to="/team-calendar"
-          className={({ isActive }) =>
-            isActive ? "nav-link active" : "nav-link"
-          }
-        >
-          <FaUsers style={{ marginRight: "0.3rem" }} /> วันลาทีม
-        </NavLink>
+        {!isAdmin && (
+          <NavLink
+            to="/team-calendar"
+            className={({ isActive }) =>
+              isActive ? "nav-link active" : "nav-link"
+            }
+          >
+            <FaUsers style={{ marginRight: "0.3rem" }} /> วันลาทีม
+          </NavLink>
+        )}
 
         {isSupervisor && (
           <NavLink
@@ -115,18 +121,20 @@ const Navbar = () => {
 
       <div className="navbar-end">
         <NotificationBell />
-        <div className="user-info">
-          <span className="user-name">
-            {user?.firstName} {user?.lastName}
-          </span>
-          <span className="user-role">
-            {user?.role === "admin"
-              ? "ผู้ดูแลระบบ"
-              : user?.role === "supervisor" || user?.role === "head"
-              ? "หัวหน้างาน"
-              : "บุคลากร"}
-          </span>
-        </div>
+        <NavLink to="/profile" className="user-info-link">
+          <div className="user-info">
+            <span className="user-name">
+              {user?.firstName} {user?.lastName}
+            </span>
+            <span className="user-role">
+              {user?.role === "admin"
+                ? "ผู้ดูแลระบบ"
+                : user?.role === "supervisor" || user?.role === "head"
+                ? "หัวหน้างาน"
+                : "บุคลากร"}
+            </span>
+          </div>
+        </NavLink>
         <button onClick={handleLogout} className="logout-btn">
           <FaSignOutAlt style={{ marginRight: "0.3rem" }} /> ออกจากระบบ
         </button>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { usersAPI } from "../services/api";
+import { usersAPI, departmentsAPI, facultiesAPI } from "../services/api";
 import { useToast } from "../components/common/Toast";
 import Navbar from "../components/common/Navbar";
 import {
@@ -20,6 +20,10 @@ const UserManagement = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
   const [supervisors, setSupervisors] = useState([]);
+  const [faculties, setFaculties] = useState([]);
+  const [departments, setDepartments] = useState([]);
+  const [selectedFacultyId, setSelectedFacultyId] = useState("");
+
   const [formData, setFormData] = useState({
     employeeId: "",
     firstName: "",
@@ -45,7 +49,35 @@ const UserManagement = () => {
   useEffect(() => {
     fetchUsers();
     fetchSupervisors();
+    fetchFaculties();
   }, []);
+
+  // เมื่อเลือกคณะ ให้โหลดสาขาของคณะนั้น
+  useEffect(() => {
+    if (selectedFacultyId) {
+      fetchDepartments(selectedFacultyId);
+    } else {
+      setDepartments([]);
+    }
+  }, [selectedFacultyId]);
+
+  const fetchFaculties = async () => {
+    try {
+      const response = await facultiesAPI.getAll();
+      setFaculties(response.data);
+    } catch (error) {
+      console.error("Error fetching faculties:", error);
+    }
+  };
+
+  const fetchDepartments = async (facultyId) => {
+    try {
+      const response = await departmentsAPI.getAll(facultyId);
+      setDepartments(response.data);
+    } catch (error) {
+      console.error("Error fetching departments:", error);
+    }
+  };
 
   const fetchUsers = async () => {
     try {
@@ -215,9 +247,7 @@ const UserManagement = () => {
       <div className="user-management-page">
         <div className="page-header">
           <div>
-            <h1>
-              <FaUsers style={{ marginRight: "10px" }} /> จัดการบุคลากร
-            </h1>
+            <h1>จัดการบุคลากร</h1>
             <p>จัดการข้อมูลบุคลากรในระบบ ({users.length} คน)</p>
           </div>
           <button className="add-btn" onClick={() => openModal()}>
@@ -232,7 +262,7 @@ const UserManagement = () => {
                 <th>รหัส</th>
                 <th>ชื่อ-นามสกุล</th>
                 <th>อีเมล</th>
-                <th>แผนก</th>
+                <th>สาขาวิชา/หน่วยงาน</th>
                 <th>ตำแหน่ง</th>
                 <th>บทบาท</th>
                 <th>วันลาคงเหลือ</th>
@@ -359,15 +389,48 @@ const UserManagement = () => {
 
                 <div className="form-row">
                   <div className="form-group">
-                    <label>แผนก/ภาควิชา (ID)</label>
-                    <input
-                      type="number"
+                    <label>คณะ/สำนัก/สถาบัน</label>
+                    <select
+                      name="facultyId"
+                      value={selectedFacultyId}
+                      onChange={(e) => {
+                        setSelectedFacultyId(e.target.value);
+                        setFormData({ ...formData, departmentId: "" });
+                      }}
+                      required
+                    >
+                      <option value="">-- เลือกคณะ --</option>
+                      {faculties.map((fac) => (
+                        <option key={fac.id} value={fac.id}>
+                          {fac.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label>สาขาวิชา/หน่วยงาน</label>
+                    <select
                       name="departmentId"
                       value={formData.departmentId}
                       onChange={handleChange}
-                      placeholder="เช่น 1, 2, 3"
-                    />
+                      required
+                      disabled={!selectedFacultyId}
+                    >
+                      <option value="">
+                        {selectedFacultyId
+                          ? "-- เลือกสาขา --"
+                          : "-- เลือกคณะก่อน --"}
+                      </option>
+                      {departments.map((dept) => (
+                        <option key={dept.id} value={dept.id}>
+                          {dept.name}
+                        </option>
+                      ))}
+                    </select>
                   </div>
+                </div>
+
+                <div className="form-row">
                   <div className="form-group">
                     <label>ตำแหน่ง</label>
                     <input

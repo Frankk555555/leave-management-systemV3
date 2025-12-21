@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import Calendar from "react-calendar";
 import { leaveRequestsAPI, holidaysAPI } from "../services/api";
+import { useAuth } from "../context/AuthContext";
 import {
   FaBriefcaseMedical,
   FaClipboardList,
@@ -18,6 +19,7 @@ import "react-calendar/dist/Calendar.css";
 import "./TeamCalendar.css";
 
 const TeamCalendar = () => {
+  const { user } = useAuth();
   const [date, setDate] = useState(new Date());
   const [teamLeaves, setTeamLeaves] = useState([]);
   const [holidays, setHolidays] = useState([]);
@@ -51,6 +53,10 @@ const TeamCalendar = () => {
 
   const getTeamLeavesForDate = (date) => {
     return teamLeaves.filter((l) => {
+      // ไม่นับตัวเอง
+      const leaveUserId = l.userId || l.user?.id;
+      if (leaveUserId === user?.id) return false;
+
       const start = new Date(l.startDate);
       const end = new Date(l.endDate);
       start.setHours(0, 0, 0, 0);
@@ -130,7 +136,7 @@ const TeamCalendar = () => {
       <Navbar />
       <div className="team-calendar-page">
         <div className="page-header">
-          <h1>👥 ปฏิทินวันลาทีม</h1>
+          <h1>ปฏิทินวันลาทีม</h1>
           <p>ดูวันลาของเพื่อนร่วมงานในทีม</p>
         </div>
 
@@ -278,7 +284,12 @@ const TeamCalendar = () => {
               <h3>📋 การลาที่กำลังจะมาถึง</h3>
               <div className="upcoming-list">
                 {teamLeaves
-                  .filter((l) => new Date(l.startDate) >= new Date())
+                  .filter((l) => {
+                    // ไม่นับตัวเอง
+                    const leaveUserId = l.userId || l.user?.id;
+                    if (leaveUserId === user?.id) return false;
+                    return new Date(l.startDate) >= new Date();
+                  })
                   .slice(0, 5)
                   .map((leave) => (
                     <div key={leave.id || leave._id} className="upcoming-item">
@@ -300,8 +311,11 @@ const TeamCalendar = () => {
                       </div>
                     </div>
                   ))}
-                {teamLeaves.filter((l) => new Date(l.startDate) >= new Date())
-                  .length === 0 && (
+                {teamLeaves.filter((l) => {
+                  const leaveUserId = l.userId || l.user?.id;
+                  if (leaveUserId === user?.id) return false;
+                  return new Date(l.startDate) >= new Date();
+                }).length === 0 && (
                   <p className="no-upcoming">ไม่มีการลาในช่วงนี้</p>
                 )}
               </div>
