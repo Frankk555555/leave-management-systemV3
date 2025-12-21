@@ -1,11 +1,13 @@
-# ระบบบริหารการลา (Leave Management System)
+# ระบบบริหารการลา (Leave Management System) V3
 
-ระบบจัดการวันลาสำหรับองค์กร พัฒนาด้วย MERN Stack (MongoDB, Express, React, Node.js)
+ระบบจัดการวันลาสำหรับองค์กร พัฒนาด้วย **React + Express + MySQL (Sequelize ORM)**
+
+> 🆕 **V3 Updates:** เปลี่ยนจาก MongoDB เป็น MySQL, ปรับปรุง UI, รองรับภาษาไทยครบถ้วน
 
 ## 📋 ความต้องการระบบ
 
 - **Node.js** v18+ ([ดาวน์โหลด](https://nodejs.org/))
-- **MongoDB** (ใช้ [MongoDB Atlas](https://www.mongodb.com/atlas) ฟรี หรือติดตั้งในเครื่อง)
+- **MySQL** 8.0+ ([ดาวน์โหลด](https://dev.mysql.com/downloads/mysql/)) หรือใช้ XAMPP/WAMP
 - **Git** ([ดาวน์โหลด](https://git-scm.com/))
 
 ---
@@ -15,8 +17,8 @@
 ### 1. Clone โปรเจค
 
 ```bash
-git clone <repository-url>
-cd charged-kuiper
+git clone https://github.com/Frankk555555/leave-management-systemV3.git
+cd leave-management-systemV3
 ```
 
 ### 2. ติดตั้ง Dependencies
@@ -31,23 +33,41 @@ cd ../client
 npm install
 ```
 
-### 3. ตั้งค่า Environment Variables
+### 3. ตั้งค่าฐานข้อมูล MySQL
+
+#### 3.1 สร้างฐานข้อมูล
+
+```sql
+CREATE DATABASE leave_management CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+```
+
+#### 3.2 Import Schema
+
+```bash
+mysql -u root -p leave_management < server/database/schema.sql
+```
+
+หรือใช้ phpMyAdmin นำเข้าไฟล์ `server/database/schema.sql`
+
+### 4. ตั้งค่า Environment Variables
 
 #### Backend (server/.env)
 
-```bash
-cd server
-cp .env.example .env
-```
-
-แก้ไขไฟล์ `.env`:
+สร้างไฟล์ `server/.env`:
 
 ```env
-# MongoDB - สร้างฐานข้อมูลที่ MongoDB Atlas
-MONGODB_URI=mongodb+srv://<username>:<password>@<cluster>.mongodb.net/leave-system?retryWrites=true&w=majority
+# MySQL Database
+DB_HOST=localhost
+DB_PORT=3306
+DB_NAME=leave_management
+DB_USER=root
+DB_PASSWORD=your_mysql_password
 
 # JWT Secret - สร้างค่าสุ่มเอง
 JWT_SECRET=your-super-secret-key-here
+
+# Server Port
+PORT=5000
 
 # Email (สำหรับแจ้งเตือน) - ใช้ Gmail App Password
 EMAIL_USER=your-email@gmail.com
@@ -57,7 +77,21 @@ EMAIL_PASS=your-app-password
 N8N_API_KEY=your-n8n-api-key
 ```
 
-### 4. รันระบบ
+### 5. สร้าง Admin Account
+
+```bash
+cd server
+mysql -u root -p leave_management < database/create_admin.sql
+```
+
+หรือใช้ phpMyAdmin นำเข้าไฟล์ `server/database/create_admin.sql`
+
+**Admin Login:**
+
+- Email: `admin@company.com`
+- Password: `123456`
+
+### 6. รันระบบ
 
 ```bash
 # Terminal 1 - รัน Backend
@@ -69,31 +103,70 @@ cd client
 npm run dev
 ```
 
-### 5. เปิดใช้งาน
+### 7. เปิดใช้งาน
 
 - **Frontend**: http://localhost:5173
 - **Backend API**: http://localhost:5000
 
 ---
 
-## 👤 สร้าง Admin Account แรก
+## � โครงสร้างโปรเจค
 
-ใช้ API สร้าง admin:
-
-```bash
-curl -X POST http://localhost:5000/api/auth/register -H "Content-Type: application/json" -d '{
-  "employeeId": "ADMIN001",
-  "firstName": "แอดมิน",
-  "lastName": "ระบบ",
-  "email": "admin@company.com",
-  "password": "admin123",
-  "department": "IT",
-  "position": "System Admin",
-  "role": "admin"
-}'
+```
+leave-management-systemV3/
+├── client/                 # React Frontend
+│   ├── src/
+│   │   ├── components/     # Reusable components
+│   │   ├── pages/          # Page components
+│   │   ├── context/        # React Context (Auth)
+│   │   ├── services/       # API services
+│   │   └── utils/          # Utility functions
+│   └── package.json
+├── server/                 # Express Backend
+│   ├── config/             # Database config
+│   ├── controllers/        # Route controllers
+│   ├── database/           # SQL schema & seeds
+│   ├── fonts/              # Thai fonts for PDF
+│   ├── middleware/         # Auth & upload middleware
+│   ├── models/             # Sequelize models
+│   ├── routes/             # API routes
+│   ├── scripts/            # Utility scripts
+│   ├── services/           # Business logic
+│   └── package.json
+├── docs/                   # Documentation & diagrams
+└── README.md
 ```
 
-หรือใช้ Postman/Insomnia
+---
+
+## 🔑 ฟีเจอร์หลัก
+
+- ✅ ยื่นคำขอลา 8 ประเภท (ลาป่วย, ลากิจ, พักร้อน, ฯลฯ)
+- ✅ รองรับลาครึ่งวัน (เช้า/บ่าย)
+- ✅ อนุมัติ/ปฏิเสธคำขอ (หัวหน้า/Admin)
+- ✅ แนบไฟล์หลักฐาน (รองรับชื่อไฟล์ภาษาไทย)
+- ✅ แจ้งเตือนในระบบ + Email อัตโนมัติ
+- ✅ รายงานสถิติ + Export Excel/PDF (รองรับภาษาไทย)
+- ✅ ปฏิทินทีม
+- ✅ จัดการวันหยุด
+- ✅ Weekly Report อัตโนมัติ (n8n)
+
+---
+
+## 🗃️ ฐานข้อมูล MySQL
+
+### ตารางหลัก
+
+| ตาราง               | คำอธิบาย        |
+| ------------------- | --------------- |
+| `users`             | ข้อมูลผู้ใช้งาน |
+| `departments`       | แผนก            |
+| `leave_types`       | ประเภทการลา     |
+| `leave_requests`    | คำขอลา          |
+| `leave_attachments` | ไฟล์แนบ         |
+| `leave_balances`    | ยอดวันลาคงเหลือ |
+| `holidays`          | วันหยุดประจำปี  |
+| `notifications`     | การแจ้งเตือน    |
 
 ---
 
@@ -107,57 +180,18 @@ curl -X POST http://localhost:5000/api/auth/register -H "Content-Type: applicati
 
 ---
 
-## 🗃️ ตั้งค่า MongoDB Atlas (ฟรี)
-
-1. ไปที่ [MongoDB Atlas](https://www.mongodb.com/atlas)
-2. สร้าง Account / Login
-3. สร้าง Cluster ใหม่ (เลือก M0 Free)
-4. สร้าง Database User
-5. ตั้งค่า Network Access → Add IP Address → `0.0.0.0/0`
-6. คัดลอก Connection String ไปใส่ใน `MONGODB_URI`
-
----
-
-## 📁 โครงสร้างโปรเจค
-
-```
-charged-kuiper/
-├── client/              # React Frontend
-│   ├── src/
-│   │   ├── components/
-│   │   ├── pages/
-│   │   ├── context/
-│   │   └── services/
-│   └── package.json
-├── server/              # Express Backend
-│   ├── controllers/
-│   ├── models/
-│   ├── routes/
-│   ├── services/
-│   └── package.json
-├── docker-compose.yml   # สำหรับ n8n
-└── README.md
-```
-
----
-
-## 🔑 ฟีเจอร์หลัก
-
-- ✅ ยื่นคำขอลา 8 ประเภท
-- ✅ อนุมัติ/ปฏิเสธคำขอ
-- ✅ แจ้งเตือน Email อัตโนมัติ
-- ✅ รายงานสถิติ + Export Excel/PDF
-- ✅ ปฏิทินทีม
-- ✅ Weekly Report อัตโนมัติ (n8n)
-
----
-
 ## ❓ ปัญหาที่พบบ่อย
 
-### MongoDB Connection Error
+### MySQL Connection Error
 
-- ตรวจสอบ `MONGODB_URI` ถูกต้อง
-- ตรวจสอบ Network Access ใน MongoDB Atlas
+- ตรวจสอบ MySQL service กำลังทำงาน
+- ตรวจสอบ username/password ใน `.env`
+- ตรวจสอบชื่อฐานข้อมูลถูกต้อง
+
+### ภาษาไทยแสดงผิดเพี้ยน
+
+- ตรวจสอบ Database ใช้ charset `utf8mb4`
+- ตรวจสอบ collation เป็น `utf8mb4_unicode_ci`
 
 ### Email ไม่ส่ง
 
@@ -175,3 +209,15 @@ taskkill /PID <PID> /F
 lsof -i :5000
 kill -9 <PID>
 ```
+
+---
+
+## 📄 License
+
+MIT License
+
+---
+
+## 👨‍💻 พัฒนาโดย
+
+ระบบจัดการวันลา เวอร์ชัน 3.0 - MySQL Edition
