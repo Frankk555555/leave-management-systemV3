@@ -12,7 +12,6 @@ import {
   FaClipboardList,
   FaCalendarAlt,
   FaUsers,
-  FaCheckCircle,
   FaCog,
   FaFileAlt,
   FaUsersCog,
@@ -23,7 +22,7 @@ import {
 } from "react-icons/fa";
 
 const Navbar = () => {
-  const { user, logout, isAdmin, isSupervisor } = useAuth();
+  const { user, logout, isAdmin } = useAuth();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -52,7 +51,11 @@ const Navbar = () => {
 
       <div className="navbar-brand">
         <h1>
-          <img src="/bru-logo-color.png" alt="BRU Logo" className="navbar-logo" />{" "}
+          <img
+            src="/bru-logo-color.png"
+            alt="BRU Logo"
+            className="navbar-logo"
+          />{" "}
           ระบบบริหารการลา
         </h1>
       </div>
@@ -107,18 +110,6 @@ const Navbar = () => {
             onClick={closeMenu}
           >
             <FaUsers style={{ marginRight: "0.3rem" }} /> วันลาทีม
-          </NavLink>
-        )}
-
-        {isSupervisor && (
-          <NavLink
-            to="/approvals"
-            className={({ isActive }) =>
-              isActive ? "nav-link active" : "nav-link"
-            }
-            onClick={closeMenu}
-          >
-            <FaCheckCircle style={{ marginRight: "0.3rem" }} /> อนุมัติลา
           </NavLink>
         )}
 

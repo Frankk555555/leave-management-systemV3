@@ -15,7 +15,6 @@ const LeaveRequest = lazy(() => import("./pages/LeaveRequest"));
 const LeaveHistory = lazy(() => import("./pages/LeaveHistory"));
 const CalendarPage = lazy(() => import("./pages/CalendarPage"));
 const TeamCalendar = lazy(() => import("./pages/TeamCalendar"));
-const Approvals = lazy(() => import("./pages/Approvals"));
 const UserManagement = lazy(() => import("./pages/UserManagement"));
 const HolidayManagement = lazy(() => import("./pages/HolidayManagement"));
 const LeaveTypeManagement = lazy(() => import("./pages/LeaveTypeManagement"));
@@ -72,15 +71,6 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <TeamCalendar />
-                  </ProtectedRoute>
-                }
-              />
-
-              <Route
-                path="/approvals"
-                element={
-                  <ProtectedRoute supervisorOnly>
-                    <Approvals />
                   </ProtectedRoute>
                 }
               />
