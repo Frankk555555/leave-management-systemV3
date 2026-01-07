@@ -212,13 +212,6 @@ const LeaveHistory = () => {
                       </div>
                     </div>
                   )}
-
-                  {request.approvalNote && (
-                    <div className="approval-note">
-                      <span className="note-label">หมายเหตุ:</span>
-                      <p className="note-text">{request.approvalNote}</p>
-                    </div>
-                  )}
                 </div>
 
                 <div className="card-footer">

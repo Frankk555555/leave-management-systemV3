@@ -10,9 +10,6 @@ import React from "react";
 // React Icons
 import {
   FaChartBar,
-  FaClock,
-  FaCheckCircle,
-  FaTimesCircle,
   FaBullseye,
   FaHospital,
   FaClipboardList,
@@ -27,12 +24,7 @@ import {
 
 const Dashboard = () => {
   const { user } = useAuth();
-  const [stats, setStats] = useState({
-    pending: 0,
-    approved: 0,
-    rejected: 0,
-    total: 0,
-  });
+  const [totalRequests, setTotalRequests] = useState(0);
   const [recentRequests, setRecentRequests] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -44,14 +36,7 @@ const Dashboard = () => {
     try {
       const response = await leaveRequestsAPI.getMyRequests();
       const requests = response.data;
-
-      setStats({
-        pending: requests.filter((r) => r.status === "pending").length,
-        approved: requests.filter((r) => r.status === "approved").length,
-        rejected: requests.filter((r) => r.status === "rejected").length,
-        total: requests.length,
-      });
-
+      setTotalRequests(requests.length);
       setRecentRequests(requests.slice(0, 5));
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
@@ -85,29 +70,6 @@ const Dashboard = () => {
       default:
         return <FaClipboardList />;
     }
-  };
-
-  const getStatusBadge = (status) => {
-    const styles = {
-      pending: { bg: "#fef3c7", color: "#d97706", text: "รออนุมัติ" },
-      approved: { bg: "#d1fae5", color: "#059669", text: "อนุมัติแล้ว" },
-      rejected: { bg: "#fee2e2", color: "#dc2626", text: "ไม่อนุมัติ" },
-    };
-    const style = styles[status] || styles.pending;
-    return (
-      <span
-        style={{
-          background: style.bg,
-          color: style.color,
-          padding: "0.25rem 0.75rem",
-          borderRadius: "20px",
-          fontSize: "0.8rem",
-          fontWeight: 500,
-        }}
-      >
-        {style.text}
-      </span>
-    );
   };
 
   const formatDate = (date) => {
@@ -152,53 +114,8 @@ const Dashboard = () => {
               <FaChartBar color="white" />
             </div>
             <div className="stat-info">
-              <h3>{stats.total}</h3>
-              <p>คำขอทั้งหมด</p>
-            </div>
-          </div>
-
-          <div className="stat-card">
-            <div
-              className="stat-icon"
-              style={{
-                background: "linear-gradient(135deg, #f6d365, #fda085)",
-              }}
-            >
-              <FaClock color="white" />
-            </div>
-            <div className="stat-info">
-              <h3>{stats.pending}</h3>
-              <p>รออนุมัติ</p>
-            </div>
-          </div>
-
-          <div className="stat-card">
-            <div
-              className="stat-icon"
-              style={{
-                background: "linear-gradient(135deg, #11998e, #38ef7d)",
-              }}
-            >
-              <FaCheckCircle color="white" />
-            </div>
-            <div className="stat-info">
-              <h3>{stats.approved}</h3>
-              <p>อนุมัติแล้ว</p>
-            </div>
-          </div>
-
-          <div className="stat-card">
-            <div
-              className="stat-icon"
-              style={{
-                background: "linear-gradient(135deg, #ff6b6b, #ee5a5a)",
-              }}
-            >
-              <FaTimesCircle color="white" />
-            </div>
-            <div className="stat-info">
-              <h3>{stats.rejected}</h3>
-              <p>ไม่อนุมัติ</p>
+              <h3>{totalRequests}</h3>
+              <p>บันทึกการลาทั้งหมด</p>
             </div>
           </div>
         </div>
@@ -466,10 +383,10 @@ const Dashboard = () => {
 
           <div className="recent-requests-card">
             <h2>
-              <FaClipboardList style={{ marginRight: "0.5rem" }} /> คำขอล่าสุด
+              <FaClipboardList style={{ marginRight: "0.5rem" }} /> บันทึกล่าสุด
             </h2>
             {recentRequests.length === 0 ? (
-              <p className="no-data">ยังไม่มีคำขอลา</p>
+              <p className="no-data">ยังไม่มีบันทึกการลา</p>
             ) : (
               <div className="requests-list">
                 {recentRequests.map((request) => (
@@ -485,7 +402,6 @@ const Dashboard = () => {
                       </p>
                     </div>
                     <div className="request-days">{request.totalDays} วัน</div>
-                    {getStatusBadge(request.status)}
                   </div>
                 ))}
               </div>

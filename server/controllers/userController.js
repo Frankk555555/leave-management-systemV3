@@ -245,6 +245,12 @@ const deleteUser = async (req, res) => {
     // Import models for cascade delete
     const { LeaveBalance, LeaveRequest, Notification } = require("../models");
 
+    // Clear approved_by references in leave_requests (for old approval data)
+    await LeaveRequest.update(
+      { approvedBy: null },
+      { where: { approvedBy: user.id } }
+    );
+
     // Delete related records first
     await LeaveBalance.destroy({ where: { userId: user.id } });
     await Notification.destroy({ where: { userId: user.id } });
@@ -325,11 +331,9 @@ const updateProfile = async (req, res) => {
       }
       const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/;
       if (!passwordRegex.test(password)) {
-        return res
-          .status(400)
-          .json({
-            message: "รหัสผ่านต้องมีตัวพิมพ์เล็ก ตัวพิมพ์ใหญ่ และตัวเลข",
-          });
+        return res.status(400).json({
+          message: "รหัสผ่านต้องมีตัวพิมพ์เล็ก ตัวพิมพ์ใหญ่ และตัวเลข",
+        });
       }
       user.password = password; // Will be hashed by beforeUpdate hook
     }

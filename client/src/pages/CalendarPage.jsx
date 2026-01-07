@@ -23,7 +23,7 @@ const CalendarPage = () => {
         leaveRequestsAPI.getMyRequests(),
       ]);
       setHolidays(holidaysRes.data);
-      setLeaveRequests(leavesRes.data.filter((l) => l.status === "approved"));
+      setLeaveRequests(leavesRes.data);
     } catch (error) {
       console.error("Error fetching data:", error);
     } finally {

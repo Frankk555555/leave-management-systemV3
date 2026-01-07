@@ -247,15 +247,9 @@ const cancelLeaveRequest = async (req, res) => {
         .json({ message: "Not authorized to cancel this request" });
     }
 
-    if (leaveRequest.status !== "pending") {
-      return res
-        .status(400)
-        .json({ message: "Can only cancel pending requests" });
-    }
+    await leaveRequest.destroy();
 
-    await leaveRequest.update({ status: "cancelled" });
-
-    res.json({ message: "คำขอลาถูกยกเลิกเรียบร้อยแล้ว", leaveRequest });
+    res.json({ message: "ลบบันทึกการลาเรียบร้อยแล้ว" });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server error", error: error.message });
@@ -278,12 +272,6 @@ const updateLeaveRequest = async (req, res) => {
       return res
         .status(403)
         .json({ message: "Not authorized to update this request" });
-    }
-
-    if (leaveRequest.status !== "pending") {
-      return res
-        .status(400)
-        .json({ message: "Can only update pending requests" });
     }
 
     const { leaveType, startDate, endDate, reason } = req.body;
@@ -313,7 +301,7 @@ const updateLeaveRequest = async (req, res) => {
       reason,
     });
 
-    res.json({ message: "อัปเดตคำขอลาเรียบร้อยแล้ว", leaveRequest });
+    res.json({ message: "อัปเดตบันทึกการลาเรียบร้อยแล้ว", leaveRequest });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server error", error: error.message });
