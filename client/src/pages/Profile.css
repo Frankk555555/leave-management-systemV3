@@ -227,21 +227,23 @@
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  padding: 1rem 2.5rem;
-  background: linear-gradient(135deg, #667eea, #764ba2);
-  color: white;
+  padding: 0.875rem 2rem;
+  background-color: #00d704;
+  color: #ffffff;
   border: none;
-  border-radius: 12px;
-  font-size: 1rem;
+  border-radius: 8px;
+  min-width: 100px;
+  height: 45px;
+  font-size: 0.9rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.3s;
-  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+  transition: 0.3s;
 }
 
 .save-btn:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+  background-color: #30df2a;
+  box-shadow: 0 0 0 5px #b3f8a0;
+  color: #fff;
 }
 
 .save-btn:disabled {
@@ -272,5 +274,63 @@
   .profile-avatar {
     width: 120px;
     height: 120px;
+  }
+
+  .profile-header h1 {
+    font-size: 1.5rem;
+  }
+
+  .save-btn {
+    width: 100%;
+    padding: 0.875rem 2rem;
+  }
+}
+
+/* Small phones */
+@media (max-width: 480px) {
+  .profile-page {
+    padding: 0.75rem;
+    padding-top: 70px;
+  }
+
+  .profile-content {
+    padding: 1rem;
+    border-radius: 16px;
+  }
+
+  .profile-avatar {
+    width: 100px;
+    height: 100px;
+  }
+
+  .profile-header h1 {
+    font-size: 1.25rem;
+    flex-direction: column;
+  }
+
+  .profile-info-card {
+    padding: 1rem;
+    border-radius: 12px;
+  }
+
+  .info-item {
+    gap: 0.5rem;
+  }
+
+  .info-icon {
+    font-size: 1rem;
+  }
+
+  .info-item span {
+    font-size: 0.9rem;
+  }
+
+  .profile-form .form-group input {
+    padding: 0.75rem;
+    font-size: 16px; /* Prevent iOS zoom */
+  }
+
+  .image-hint {
+    font-size: 0.8rem;
   }
 }

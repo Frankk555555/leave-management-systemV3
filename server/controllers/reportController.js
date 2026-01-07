@@ -326,41 +326,76 @@ const exportToPDF = async (req, res) => {
   }
 };
 
-// @desc    Reset yearly leave balance for all employees
+// @desc    Reset yearly leave balance for all employees (รีเซ็ตวันลาประจำปีงบประมาณ 1 ต.ค.)
 // @route   POST /api/reports/reset-yearly
 // @access  Private/Admin
 const resetYearlyLeaveBalance = async (req, res) => {
   try {
-    // Update all leave balances to default values
-    const [updatedCount] = await LeaveBalance.update(
-      {
+    // Get all users with their leave balance and start date
+    const users = await User.findAll({
+      include: [{ model: LeaveBalance, as: "leaveBalance" }],
+    });
+
+    const results = [];
+    const today = new Date();
+
+    for (const user of users) {
+      if (!user.leaveBalance) continue;
+
+      // Calculate years of service
+      let yearsOfService = 0;
+      if (user.startDate) {
+        const startDate = new Date(user.startDate);
+        yearsOfService = Math.floor(
+          (today - startDate) / (365.25 * 24 * 60 * 60 * 1000)
+        );
+      }
+
+      // Max vacation days based on years of service
+      // < 10 years: max 20 days (10 current + 10 accrued)
+      // >= 10 years: max 30 days (10 current + 20 accrued)
+      const maxTotal = yearsOfService >= 10 ? 30 : 20;
+      const maxAccrued = maxTotal - 10; // 10 or 20
+
+      // Calculate vacation days remaining this year
+      const vacationRemaining = user.leaveBalance.vacation;
+
+      // Calculate new accrued (unused vacation from this year + previous accrued)
+      // But cap at max allowed
+      let newAccrued = Math.min(vacationRemaining, maxAccrued);
+
+      // New vacation = accrued + 10 (current year allocation)
+      const newVacation = newAccrued + 10;
+
+      // Update leave balance
+      await user.leaveBalance.update({
         sick: 60,
         personal: 45,
-        vacation: 10,
+        vacation: newVacation,
+        vacationAccrued: newAccrued,
+        vacationCurrentYear: 10,
         maternity: 90,
         paternity: 15,
         childcare: 150,
         ordination: 120,
         military: 60,
-      },
-      {
-        where: {}, // Update all records
-      }
-    );
+      });
+
+      results.push({
+        employeeId: user.employeeId,
+        name: `${user.firstName} ${user.lastName}`,
+        yearsOfService,
+        maxTotal,
+        previousRemaining: vacationRemaining,
+        newAccrued,
+        newVacation,
+      });
+    }
 
     res.json({
-      message: "รีเซ็ตวันลาประจำปีเรียบร้อยแล้ว",
-      updatedCount,
-      leaveBalance: {
-        sick: 60,
-        personal: 45,
-        vacation: 10,
-        maternity: 90,
-        paternity: 15,
-        childcare: 150,
-        ordination: 120,
-        military: 60,
-      },
+      message: `รีเซ็ตวันลาประจำปีงบประมาณเรียบร้อยแล้ว (คำนวณสะสมวันลาพักผ่อน)`,
+      updatedCount: results.length,
+      results,
     });
   } catch (error) {
     console.error(error);

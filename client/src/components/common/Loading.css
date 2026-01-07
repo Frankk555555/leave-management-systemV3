@@ -1,0 +1,156 @@
+/* ============================================
+   Unified Loading Component Styles
+   ============================================ */
+
+/* Loading Wrapper */
+.loading-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+}
+
+/* Full Page Container */
+.loading-fullpage-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);
+}
+
+/* Overlay */
+.loading-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(4px);
+  z-index: 9999;
+}
+
+/* Size Variations */
+.loading-small .loading-spinner-unified {
+  width: 30px;
+  height: 30px;
+}
+
+.loading-medium .loading-spinner-unified {
+  width: 50px;
+  height: 50px;
+}
+
+.loading-large .loading-spinner-unified {
+  width: 70px;
+  height: 70px;
+}
+
+.loading-fullpage .loading-spinner-unified {
+  width: 60px;
+  height: 60px;
+}
+
+/* Spinner - Triple Ring Design */
+.loading-spinner-unified {
+  position: relative;
+}
+
+/* Ring Base Styles */
+.spinner-ring-1,
+.spinner-ring-2,
+.spinner-ring-3 {
+  position: absolute;
+  border: 3px solid transparent;
+  border-radius: 50%;
+  animation: unified-spin 1.2s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+}
+
+/* Ring 1 - Outer */
+.spinner-ring-1 {
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  border-top-color: #667eea;
+  animation-delay: -0.45s;
+}
+
+/* Ring 2 - Middle */
+.spinner-ring-2 {
+  width: 75%;
+  height: 75%;
+  top: 12.5%;
+  left: 12.5%;
+  border-top-color: #764ba2;
+  animation-delay: -0.3s;
+}
+
+/* Ring 3 - Inner */
+.spinner-ring-3 {
+  width: 50%;
+  height: 50%;
+  top: 25%;
+  left: 25%;
+  border-top-color: #a855f7;
+  animation-delay: -0.15s;
+}
+
+@keyframes unified-spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* Loading Text */
+.loading-text-unified {
+  font-size: 0.95rem;
+  color: #667eea;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  animation: text-pulse 1.5s ease-in-out infinite;
+}
+
+.loading-small .loading-text-unified {
+  font-size: 0.8rem;
+}
+
+.loading-large .loading-text-unified,
+.loading-fullpage .loading-text-unified {
+  font-size: 1rem;
+}
+
+@keyframes text-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* Inline Spinner (for buttons, etc.) */
+.spinner-inline {
+  display: inline-block;
+  border: 2px solid;
+  border-radius: 50%;
+  animation: unified-spin 0.8s linear infinite;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .loading-fullpage .loading-spinner-unified {
+    width: 50px;
+    height: 50px;
+  }
+
+  .loading-text-unified {
+    font-size: 0.85rem;
+  }
+}

@@ -2,98 +2,15 @@ const jwt = require("jsonwebtoken");
 const { User, LeaveBalance, LeaveType, Department } = require("../models");
 const { Op } = require("sequelize");
 
-// Generate JWT
+// Generate JWT - Reduced expiry for better security
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, {
-    expiresIn: "30d",
+    expiresIn: "7d", // Reduced from 30d for security
   });
 };
 
-// @desc    Register user
-// @route   POST /api/auth/register
-// @access  Public
-const register = async (req, res) => {
-  try {
-    const {
-      employeeId,
-      firstName,
-      lastName,
-      email,
-      password,
-      departmentId,
-      position,
-      role,
-      supervisorId,
-    } = req.body;
-
-    // Check if user exists
-    const userExists = await User.findOne({
-      where: {
-        [Op.or]: [{ email }, { employeeId }],
-      },
-    });
-
-    if (userExists) {
-      return res.status(400).json({ message: "User already exists" });
-    }
-
-    // Create user
-    const user = await User.create({
-      employeeId,
-      firstName,
-      lastName,
-      email,
-      password, // Will be hashed by beforeCreate hook
-      departmentId,
-      position,
-      role: role || "employee",
-      supervisorId: supervisorId || null,
-    });
-
-    // Create leave balance for user
-    await LeaveBalance.create({
-      userId: user.id,
-      sick: 60,
-      personal: 45,
-      vacation: 10,
-      maternity: 90,
-      paternity: 15,
-      childcare: 150,
-      ordination: 120,
-      military: 60,
-    });
-
-    // Fetch user with associations
-    const userWithBalance = await User.findByPk(user.id, {
-      include: [
-        {
-          model: LeaveBalance,
-          as: "leaveBalance",
-        },
-        {
-          model: Department,
-          as: "department",
-        },
-      ],
-    });
-
-    res.status(201).json({
-      id: user.id,
-      employeeId: user.employeeId,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      email: user.email,
-      department: userWithBalance.department,
-      position: user.position,
-      role: user.role,
-      leaveBalance: userWithBalance.leaveBalance,
-      token: generateToken(user.id),
-    });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Server error", error: error.message });
-  }
-};
+// Note: User registration is handled by admin only via userController.createUser
+// See routes/users.js and controllers/userController.js
 
 // @desc    Login user
 // @route   POST /api/auth/login
@@ -118,7 +35,7 @@ const login = async (req, res) => {
     });
 
     if (!user) {
-      return res.status(401).json({ message: "Invalid email or password" });
+      return res.status(401).json({ message: "อีเมลหรือรหัสผ่านไม่ถูกต้อง" });
     }
 
     // Check password
@@ -138,7 +55,7 @@ const login = async (req, res) => {
         token: generateToken(user.id),
       });
     } else {
-      res.status(401).json({ message: "Invalid email or password" });
+      res.status(401).json({ message: "อีเมลหรือรหัสผ่านไม่ถูกต้อง" });
     }
   } catch (error) {
     console.error(error);
@@ -171,7 +88,7 @@ const getMe = async (req, res) => {
     });
 
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      return res.status(404).json({ message: "ไม่พบผู้ใช้" });
     }
 
     res.json(user);
@@ -181,4 +98,4 @@ const getMe = async (req, res) => {
   }
 };
 
-module.exports = { register, login, getMe };
+module.exports = { login, getMe };

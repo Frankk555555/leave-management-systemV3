@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { holidaysAPI } from "../services/api";
 import { useToast } from "../components/common/Toast";
 import Navbar from "../components/common/Navbar";
+import Loading from "../components/common/Loading";
 import {
   FaCalendarAlt,
   FaCalendarPlus,
@@ -123,9 +124,7 @@ const HolidayManagement = () => {
     return (
       <>
         <Navbar />
-        <div className="loading-container">
-          <div className="loading-spinner"></div>
-        </div>
+        <Loading size="fullpage" text="กำลังโหลด..." />
       </>
     );
   }
@@ -136,9 +135,7 @@ const HolidayManagement = () => {
       <div className="holiday-management-page">
         <div className="page-header">
           <div>
-            <h1>
-              จัดการวันหยุด
-            </h1>
+            <h1>จัดการวันหยุด</h1>
             <p>จัดการวันหยุดราชการ ({holidays.length} วัน)</p>
           </div>
           <div className="header-actions">

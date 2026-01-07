@@ -28,18 +28,18 @@ const protect = async (req, res, next) => {
       });
 
       if (!req.user) {
-        return res.status(401).json({ message: "User not found" });
+        return res.status(401).json({ message: "ไม่พบผู้ใช้ในระบบ" });
       }
 
-      next();
+      return next();
     } catch (error) {
-      console.error(error);
-      res.status(401).json({ message: "Not authorized, token failed" });
+      console.error("Auth error:", error.message);
+      return res.status(401).json({ message: "Token ไม่ถูกต้องหรือหมดอายุ" });
     }
   }
 
   if (!token) {
-    res.status(401).json({ message: "Not authorized, no token" });
+    return res.status(401).json({ message: "กรุณาเข้าสู่ระบบก่อน" });
   }
 };
 

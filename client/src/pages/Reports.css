@@ -59,22 +59,7 @@
   box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
 }
 
-.reset-btn {
-  padding: 0.75rem 1.25rem;
-  background: linear-gradient(135deg, #f59e0b, #d97706);
-  color: white;
-  border: none;
-  border-radius: 10px;
-  font-size: 0.9rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-}
 
-.reset-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 5px 15px rgba(245, 158, 11, 0.4);
-}
 
 .stats-grid {
   display: grid;
@@ -201,4 +186,123 @@
 
 .department-table tbody tr:hover {
   background: #f7fafc;
+}
+
+/* ==========================================
+   ADDITIONAL RESPONSIVE STYLES
+   ========================================== */
+
+@media (max-width: 768px) {
+  .reports-page {
+    padding: 1rem;
+  }
+
+  .page-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .header-actions {
+    justify-content: center;
+  }
+
+  .year-select {
+    flex: 1;
+    min-width: 100px;
+  }
+
+  .export-btn {
+    flex: 1;
+    text-align: center;
+    padding: 0.65rem 1rem;
+    font-size: 0.85rem;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+
+  .stat-card {
+    padding: 1rem;
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .stat-icon {
+    width: 50px;
+    height: 50px;
+    font-size: 2rem;
+  }
+
+  .stat-info h3 {
+    font-size: 1.5rem;
+  }
+
+  .chart-card {
+    padding: 1rem;
+    border-radius: 16px;
+  }
+
+  .chart-container {
+    height: 250px;
+  }
+
+  .chart-container.doughnut {
+    height: 180px;
+  }
+
+  .department-table-card {
+    padding: 1rem;
+    border-radius: 16px;
+    overflow-x: auto;
+  }
+
+  .department-table {
+    min-width: 500px;
+  }
+
+  .department-table th,
+  .department-table td {
+    padding: 0.75rem;
+    font-size: 0.85rem;
+  }
+}
+
+/* Small phones */
+@media (max-width: 480px) {
+  .reports-page {
+    padding: 0.75rem;
+  }
+
+  .header-actions {
+    flex-direction: column;
+  }
+
+  .year-select,
+  .export-btn {
+    width: 100%;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .stat-icon {
+    width: 45px;
+    height: 45px;
+    font-size: 1.75rem;
+  }
+
+  .stat-info h3 {
+    font-size: 1.25rem;
+  }
+
+  .stat-info p {
+    font-size: 0.8rem;
+  }
+
+  .chart-container {
+    height: 200px;
+  }
 }

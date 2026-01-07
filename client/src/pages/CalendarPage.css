@@ -226,3 +226,86 @@
   font-size: 0.85rem;
   color: #4a5568;
 }
+
+/* ==========================================
+   ADDITIONAL RESPONSIVE STYLES
+   ========================================== */
+
+@media (max-width: 768px) {
+  .calendar-page {
+    padding: 1rem;
+  }
+
+  .calendar-wrapper {
+    padding: 1rem;
+    border-radius: 16px;
+  }
+
+  .react-calendar__tile {
+    padding: 0.75rem 0.25rem;
+    font-size: 0.85rem;
+  }
+
+  .react-calendar__navigation button {
+    font-size: 0.9rem;
+    min-width: 36px;
+  }
+
+  .selected-date-card,
+  .legend-card,
+  .upcoming-card {
+    padding: 1rem;
+    border-radius: 14px;
+  }
+
+  .event-item {
+    padding: 0.625rem;
+  }
+
+  .event-icon {
+    font-size: 1.25rem;
+  }
+
+  .event-info h4 {
+    font-size: 0.85rem;
+  }
+
+  .event-info p {
+    font-size: 0.75rem;
+  }
+}
+
+/* Small phones */
+@media (max-width: 480px) {
+  .calendar-page {
+    padding: 0.75rem;
+  }
+
+  .react-calendar__tile {
+    padding: 0.5rem 0.2rem;
+    font-size: 0.8rem;
+  }
+
+  .tile-content {
+    font-size: 0.5rem;
+  }
+
+  .calendar-sidebar {
+    gap: 1rem;
+  }
+
+  .selected-date-card h3,
+  .legend-card h3,
+  .upcoming-card h3 {
+    font-size: 0.9rem;
+  }
+
+  .legend-item {
+    font-size: 0.8rem;
+  }
+
+  .upcoming-date {
+    font-size: 0.7rem;
+    padding: 0.2rem 0.4rem;
+  }
+}

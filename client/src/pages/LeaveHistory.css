@@ -248,10 +248,10 @@
 .action-row {
   display: flex;
   justify-content: flex-end; /* จัดชิดขวา */
-  align-items: center;       /* จัดกึ่งกลางแนวตั้ง */
-  gap: 10px;                 /* เว้นระยะห่างระหว่างปุ่ม 10px (ปรับเลขนี้ได้ตามชอบ) */
-  flex-wrap: wrap;           /* ถ้าพื้นที่ไม่พอ ให้ปัดลงบรรทัดล่างโดยไม่ซ้อนทับ */
-  
+  align-items: center; /* จัดกึ่งกลางแนวตั้ง */
+  gap: 10px; /* เว้นระยะห่างระหว่างปุ่ม 10px (ปรับเลขนี้ได้ตามชอบ) */
+  flex-wrap: wrap; /* ถ้าพื้นที่ไม่พอ ให้ปัดลงบรรทัดล่างโดยไม่ซ้อนทับ */
+
   padding-top: 12px;
   margin-top: 8px;
   border-top: 1px dashed #e2e8f0;
@@ -263,18 +263,16 @@
 
 /* Style ของปุ่มทุกประเภท */
 .edit-btn,
-.cancel-btn,
-.pdf-btn {
+.cancel-btn-leave,
+.pdf-btn-leave {
   display: inline-flex;
   align-items: center;
   justify-content: center; /* จัดไอคอนและข้อความให้อยู่กลางปุ่ม */
-  gap: 6px;                /* ระยะห่างระหว่างไอคอนกับตัวหนังสือ */
-  padding: 8px 16px;       /* เพิ่มพื้นที่ในปุ่มให้กดง่ายขึ้น */
-  min-width: 100px;         /* ขนาดขั้นต่ำเท่ากัน */
-  
-  flex-shrink: 0;          /* ห้ามปุ่มหดตัวจนเสียทรง */
+  gap: 6px; /* ระยะห่างระหว่างไอคอนกับตัวหนังสือ */
+  padding: 8px 16px; /* เพิ่มพื้นที่ในปุ่มให้กดง่ายขึ้น */
+  min-width: 100px; /* ขนาดขั้นต่ำเท่ากัน */
+  flex-shrink: 0; /* ห้ามปุ่มหดตัวจนเสียทรง */
   white-space: nowrap;
-  
   border: none;
   border-radius: 8px;
   font-size: 0.85rem;
@@ -282,9 +280,7 @@
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-  
-  /* ลบ margin-right ออก เพราะเราใช้ gap ใน .action-row แล้ว */
-  margin: 0; 
+  margin: 0;
 }
 
 /* ไม่จำเป็นต้องใช้ :last-child เพื่อลบ margin แล้ว */
@@ -298,36 +294,35 @@
 
 .edit-btn:hover {
   background: #f0f4ff;
-  border-color: #667eea;
-  color: #fbfbfb;
+  color: #667eea;
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
 }
 
-/* สีของปุ่มยกเลิก - พื้นขาว ขอบแดง ตัวหนังสือแดง */
-.cancel-btn {
+/* สีของปุ่มยกเลิก - แดง */
+.cancel-btn-leave {
+  background-color: #fd1313;
+  color: #ffffff;
+  border: none;
+}
+
+.cancel-btn-leave:hover {
+  background-color: #f84040;
+  box-shadow: 0 0 0 5px #ff88095f;
+  color: #fff;
+  transform: none;
+}
+
+/* สีของปุ่ม PDF */
+.pdf-btn-leave {
   background: white;
   border: 2px solid #e53e3e;
   color: #e53e3e;
 }
 
-.cancel-btn:hover {
+.pdf-btn-leave:hover {
   background: #fff5f5;
   border-color: #c53030;
-  color: #c53030;
-  transform: translateY(-2px);
-}
-
-/* สีของปุ่ม PDF */
-.pdf-btn {
-  background: white;
-  border: 1px solid #e2e8f0;
-  color: #e53e3e;
-}
-
-.pdf-btn:hover {
-  background: #fff5f5;
-  border-color: #fc8181;
   transform: translateY(-1px);
   box-shadow: 0 4px 6px rgba(229, 62, 62, 0.1);
 }
@@ -392,5 +387,136 @@
   box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
 }
 
+/* ==========================================
+   RESPONSIVE STYLES
+   ========================================== */
 
+/* Tablet */
+@media (max-width: 1024px) {
+  .leave-history-page {
+    padding: 1.5rem;
+  }
 
+  .history-grid {
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1rem;
+  }
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+  .leave-history-page {
+    padding: 1rem;
+  }
+
+  .page-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+  }
+
+  .filter-tabs {
+    justify-content: center;
+  }
+
+  .filter-tabs button {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8rem;
+  }
+
+  .history-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .history-card {
+    border-radius: 14px;
+  }
+
+  .card-header {
+    padding: 0.875rem 1rem;
+  }
+
+  .type-icon {
+    width: 32px;
+    height: 32px;
+    font-size: 1rem;
+  }
+
+  .card-body {
+    padding: 1rem;
+  }
+
+  .date-range-display {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .action-row {
+    justify-content: center;
+    gap: 0.5rem;
+  }
+
+  .edit-btn,
+  .cancel-btn-leave,
+  .pdf-btn-leave {
+    padding: 0.65rem 1rem;
+    min-width: 90px;
+    font-size: 0.8rem;
+  }
+
+  .footer-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+}
+
+/* Small phones */
+@media (max-width: 480px) {
+  .leave-history-page {
+    padding: 0.75rem;
+  }
+
+  .filter-tabs {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .filter-tabs button {
+    flex: 1;
+    padding: 0.5rem;
+    font-size: 0.75rem;
+  }
+
+  .type-name {
+    font-size: 0.9rem;
+  }
+
+  .status-badge {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.7rem;
+  }
+
+  .days-badge {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.8rem;
+  }
+
+  .reason-text {
+    font-size: 0.85rem;
+  }
+
+  .edit-btn,
+  .cancel-btn-leave,
+  .pdf-btn-leave {
+    min-width: auto;
+    flex: 1;
+    padding: 0.6rem 0.75rem;
+  }
+
+  .attachment-link {
+    padding: 0.35rem 0.6rem;
+    font-size: 0.7rem;
+  }
+}

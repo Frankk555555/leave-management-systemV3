@@ -1,5 +1,6 @@
 import { Navigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import Loading from "./Loading";
 import React from "react";
 
 const ProtectedRoute = ({
@@ -10,12 +11,7 @@ const ProtectedRoute = ({
   const { isAuthenticated, loading, isAdmin, isSupervisor } = useAuth();
 
   if (loading) {
-    return (
-      <div className="loading-container">
-        <div className="loading-spinner"></div>
-        <p>กำลังโหลด...</p>
-      </div>
-    );
+    return <Loading size="fullpage" text="กำลังโหลด..." />;
   }
 
   if (!isAuthenticated) {

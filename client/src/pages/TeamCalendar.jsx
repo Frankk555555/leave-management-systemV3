@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import Calendar from "react-calendar";
 import { leaveRequestsAPI, holidaysAPI } from "../services/api";
 import { useAuth } from "../context/AuthContext";
+import Loading from "../components/common/Loading";
 import {
   FaBriefcaseMedical,
   FaClipboardList,
@@ -124,9 +125,7 @@ const TeamCalendar = () => {
     return (
       <>
         <Navbar />
-        <div className="loading-container">
-          <div className="loading-spinner"></div>
-        </div>
+        <Loading size="fullpage" text="กำลังโหลด..." />
       </>
     );
   }

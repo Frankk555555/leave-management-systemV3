@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { leaveRequestsAPI } from "../services/api";
 import Navbar from "../components/common/Navbar";
+import SEO, { SEOConfig } from "../components/common/SEO";
+import { DashboardSkeleton } from "../components/common/Skeleton";
 import "./Dashboard.css";
 import React from "react";
 
@@ -119,16 +121,16 @@ const Dashboard = () => {
   if (loading) {
     return (
       <>
+        <SEO {...SEOConfig.dashboard} />
         <Navbar />
-        <div className="loading-container">
-          <div className="loading-spinner"></div>
-        </div>
+        <DashboardSkeleton />
       </>
     );
   }
 
   return (
     <>
+      <SEO {...SEOConfig.dashboard} />
       <Navbar />
       <div className="dashboard">
         <div className="dashboard-header">

@@ -42,14 +42,6 @@ export const AuthProvider = ({ children }) => {
     return userData;
   };
 
-  const register = async (data) => {
-    const response = await authAPI.register(data);
-    const { token, ...userData } = response.data;
-    localStorage.setItem("token", token);
-    setUser(userData);
-    return userData;
-  };
-
   const logout = () => {
     localStorage.removeItem("token");
     setUser(null);
@@ -63,7 +55,6 @@ export const AuthProvider = ({ children }) => {
     user,
     loading,
     login,
-    register,
     logout,
     updateUser,
     isAuthenticated: !!user,

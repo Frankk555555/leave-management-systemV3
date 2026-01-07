@@ -1,6 +1,7 @@
 import axios from "axios";
+import config from "../config";
 
-const API_URL = "http://localhost:5000/api";
+const API_URL = `${config.API_URL}/api`;
 
 const api = axios.create({
   baseURL: API_URL,
@@ -20,7 +21,6 @@ api.interceptors.request.use((config) => {
 
 // Auth API
 export const authAPI = {
-  register: (data) => api.post("/auth/register", data),
   login: (data) => api.post("/auth/login", data),
   getMe: () => api.get("/auth/me"),
 };
@@ -33,10 +33,17 @@ export const usersAPI = {
   update: (id, data) => api.put(`/users/${id}`, data),
   delete: (id) => api.delete(`/users/${id}`),
   getSupervisors: () => api.get("/users/supervisors"),
+  resetPassword: (id, newPassword) =>
+    api.put(`/users/${id}/reset-password`, { newPassword }),
   // Profile APIs (for users to edit their own profile)
   updateProfile: (data) => api.put("/users/profile", data),
   updateProfileImage: (formData) =>
     api.put("/users/profile/image", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    }),
+  // Import users from CSV/Excel
+  importUsers: (formData) =>
+    api.post("/users/import", formData, {
       headers: { "Content-Type": "multipart/form-data" },
     }),
 };

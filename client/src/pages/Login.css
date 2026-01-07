@@ -6,6 +6,7 @@
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   position: relative;
   overflow: hidden;
+  padding: 1rem;
 }
 
 .login-background {
@@ -179,4 +180,76 @@
 
 .login-footer a:hover {
   text-decoration: underline;
+}
+
+/* ==========================================
+   RESPONSIVE STYLES
+   ========================================== */
+
+/* Tablet */
+@media (max-width: 768px) {
+  .login-card {
+    padding: 2rem;
+    border-radius: 20px;
+  }
+
+  .logo {
+    font-size: 4rem;
+  }
+
+  .login-header h1 {
+    font-size: 1.5rem;
+  }
+
+  .shape-1 {
+    width: 200px;
+    height: 200px;
+  }
+
+  .shape-2 {
+    width: 150px;
+    height: 150px;
+  }
+
+  .shape-3 {
+    width: 100px;
+    height: 100px;
+  }
+}
+
+/* Mobile */
+@media (max-width: 480px) {
+  .login-container {
+    padding: 0.75rem;
+  }
+
+  .login-card {
+    padding: 1.5rem;
+    border-radius: 16px;
+  }
+
+  .logo {
+    font-size: 3.5rem;
+  }
+
+  .login-header h1 {
+    font-size: 1.25rem;
+  }
+
+  .login-header p {
+    font-size: 0.9rem;
+  }
+
+  .form-group input {
+    padding: 0.75rem;
+    font-size: 16px; /* Prevent zoom on iOS */
+  }
+
+  .login-btn {
+    padding: 0.875rem;
+  }
+
+  .login-footer {
+    font-size: 0.85rem;
+  }
 }

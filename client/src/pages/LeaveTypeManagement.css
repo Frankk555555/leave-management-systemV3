@@ -179,3 +179,77 @@
   opacity: 0.6;
   cursor: not-allowed;
 }
+
+/* ==========================================
+   RESPONSIVE STYLES
+   ========================================== */
+
+@media (max-width: 768px) {
+  .leave-type-management-page {
+    padding: 1rem;
+  }
+
+  .leave-types-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .type-header {
+    padding: 1rem;
+    border-radius: 18px 18px 0 0;
+  }
+
+  .type-header .type-icon {
+    width: 40px;
+    height: 40px;
+    font-size: 1.25rem;
+  }
+
+  .type-header h3 {
+    font-size: 1rem;
+  }
+
+  .type-body {
+    padding: 1rem;
+  }
+
+  .type-stat {
+    padding: 1rem;
+  }
+
+  .stat-value {
+    font-size: 2rem;
+  }
+
+  .leave-type-management-page .form-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .leave-type-management-page {
+    padding: 0.75rem;
+  }
+
+  .leave-type-card {
+    border-radius: 14px;
+  }
+
+  .type-header {
+    border-radius: 12px 12px 0 0;
+    gap: 0.75rem;
+  }
+
+  .type-description {
+    font-size: 0.9rem;
+  }
+
+  .type-code {
+    font-size: 0.8rem;
+  }
+
+  .reset-btn {
+    padding: 0.65rem 1rem;
+    font-size: 0.85rem;
+  }
+}

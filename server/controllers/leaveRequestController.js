@@ -240,6 +240,7 @@ const getPendingLeaveRequests = async (req, res) => {
             "lastName",
             "email",
             "position",
+            "profileImage",
           ],
           include: [
             {

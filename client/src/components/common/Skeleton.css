@@ -1,0 +1,283 @@
+/* ============================================
+   Skeleton Loading Styles
+   ============================================ */
+
+/* Base skeleton animation */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    #f0f0f0 25%,
+    #e0e0e0 50%,
+    #f0f0f0 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite ease-in-out;
+  border-radius: 4px;
+}
+
+.skeleton.circle {
+  border-radius: 50%;
+}
+
+.skeleton.text {
+  border-radius: 4px;
+}
+
+.skeleton.title {
+  border-radius: 6px;
+  margin-bottom: 1rem;
+}
+
+.skeleton.badge {
+  border-radius: 20px;
+}
+
+.skeleton.button {
+  border-radius: 10px;
+}
+
+/* Stat Card Skeleton */
+.skeleton-stat-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.5rem;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+}
+
+.skeleton-stat-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+/* Balance Item Skeleton */
+.skeleton-balance-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 0;
+}
+
+.skeleton-balance-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+/* Request Item Skeleton */
+.skeleton-request-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  background: #f7fafc;
+  border-radius: 12px;
+  margin-bottom: 0.75rem;
+}
+
+.skeleton-request-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+/* Leave Card Skeleton */
+.skeleton-leave-card {
+  background: white;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+}
+
+.skeleton-leave-card .skeleton-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.25rem;
+  background: #f7fafc;
+}
+
+.skeleton-type-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.skeleton-leave-card .skeleton-card-body {
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.skeleton-date-range {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Approval Card Skeleton */
+.skeleton-approval-card {
+  background: white;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+}
+
+.skeleton-approval-card .skeleton-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.25rem;
+  background: #f7fafc;
+}
+
+.skeleton-employee-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.skeleton-employee-info > div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.skeleton-approval-card .skeleton-card-body {
+  padding: 1.25rem;
+}
+
+.skeleton-card-actions {
+  display: flex;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+  background: #f7fafc;
+}
+
+/* Table Skeleton */
+.skeleton-table-container {
+  background: white;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+}
+
+.skeleton-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.skeleton-table th,
+.skeleton-table td {
+  padding: 1rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.skeleton-table th {
+  background: #f7fafc;
+}
+
+.skeleton-table-row td {
+  background: white;
+}
+
+/* Dashboard Skeleton */
+.skeleton-dashboard {
+  padding: 2rem;
+}
+
+.skeleton-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.skeleton-content-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: 1.5rem;
+}
+
+.skeleton-card {
+  background: white;
+  border-radius: 16px;
+  padding: 1.5rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+}
+
+.skeleton-title {
+  margin-bottom: 1.5rem;
+}
+
+/* Cards Grid Skeleton */
+.skeleton-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 1.5rem;
+  padding: 2rem;
+}
+
+/* Default Page Skeleton */
+.skeleton-default {
+  padding: 2rem;
+}
+
+.skeleton-default .skeleton-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+/* ==========================================
+   RESPONSIVE STYLES
+   ========================================== */
+
+@media (max-width: 768px) {
+  .skeleton-dashboard,
+  .skeleton-cards-grid,
+  .skeleton-default {
+    padding: 1rem;
+  }
+
+  .skeleton-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+
+  .skeleton-stat-card {
+    flex-direction: column;
+    text-align: center;
+    padding: 1rem;
+  }
+
+  .skeleton-content-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .skeleton-cards-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .skeleton-stats-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}

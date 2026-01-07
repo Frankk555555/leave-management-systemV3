@@ -96,7 +96,7 @@ export const ToastProvider = ({ children }) => {
             <p className="confirm-message">{confirmModal.message}</p>
             <div className="confirm-actions">
               <button
-                className="confirm-cancel-btn"
+                className="confirm-cancel-btn-pass"
                 onClick={confirmModal.onCancel}
               >
                 ยกเลิก

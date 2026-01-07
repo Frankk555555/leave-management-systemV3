@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 import { leaveRequestsAPI } from "../services/api";
 import { useToast } from "../components/common/Toast";
 import Navbar from "../components/common/Navbar";
+import Loading from "../components/common/Loading";
+import config from "../config";
 import "./Approvals.css";
 
 // React Icons
@@ -125,16 +127,14 @@ const Approvals = () => {
     if (!normalizedPath.startsWith("/")) {
       normalizedPath = "/" + normalizedPath;
     }
-    window.open(`http://localhost:5000${normalizedPath}`, "_blank");
+    window.open(`${config.API_URL}${normalizedPath}`, "_blank");
   };
 
   if (loading) {
     return (
       <>
         <Navbar />
-        <div className="loading-container">
-          <div className="loading-spinner"></div>
-        </div>
+        <Loading size="fullpage" text="กำลังโหลด..." />
       </>
     );
   }
@@ -144,9 +144,7 @@ const Approvals = () => {
       <Navbar />
       <div className="approvals-page">
         <div className="page-header">
-          <h1>
-             อนุมัติการลา
-          </h1>
+          <h1>อนุมัติการลา</h1>
           <p>รายการคำขอลาที่รอการอนุมัติ ({requests.length} รายการ)</p>
         </div>
 
@@ -163,16 +161,29 @@ const Approvals = () => {
                 <div className="card-header">
                   <div className="employee-info">
                     <div className="avatar">
-                      {request.employee?.firstName?.charAt(0)}
+                      {request.user?.profileImage ? (
+                        <img
+                          src={`${config.API_URL}${request.user.profileImage}`}
+                          alt={request.user?.firstName}
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                            objectFit: "cover",
+                            borderRadius: "50%",
+                          }}
+                        />
+                      ) : (
+                        request.user?.firstName?.charAt(0) || "?"
+                      )}
                     </div>
                     <div>
                       <h4>
-                        {request.employee?.firstName}{" "}
-                        {request.employee?.lastName}
+                        {request.user?.firstName || "-"}{" "}
+                        {request.user?.lastName || ""}
                       </h4>
                       <p>
-                        {request.employee?.department} -{" "}
-                        {request.employee?.position}
+                        {request.user?.department?.name || "-"} -{" "}
+                        {request.user?.position || "-"}
                       </p>
                     </div>
                   </div>

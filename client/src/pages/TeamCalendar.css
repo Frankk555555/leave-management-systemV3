@@ -278,3 +278,101 @@
   text-align: center;
   font-size: 0.85rem;
 }
+
+/* ==========================================
+   RESPONSIVE STYLES
+   ========================================== */
+
+@media (max-width: 768px) {
+  .team-calendar-page {
+    padding: 1rem;
+  }
+
+  .calendar-wrapper {
+    padding: 1rem;
+    border-radius: 16px;
+  }
+
+  .calendar-wrapper .react-calendar__tile {
+    padding: 1em 0.25em;
+  }
+
+  .tile-badge span {
+    font-size: 0.6rem;
+    padding: 1px 4px;
+  }
+
+  .selected-date-card,
+  .legend-card,
+  .upcoming-leaves-card {
+    padding: 1rem;
+    border-radius: 16px;
+  }
+
+  .team-member-leave {
+    padding: 0.625rem;
+  }
+
+  .member-avatar {
+    width: 35px;
+    height: 35px;
+    font-size: 0.85rem;
+  }
+
+  .member-name {
+    font-size: 0.85rem;
+  }
+
+  .leave-type {
+    font-size: 0.75rem;
+  }
+
+  .upcoming-item {
+    padding: 0.625rem;
+    gap: 0.75rem;
+  }
+
+  .upcoming-date {
+    padding: 0.4rem 0.5rem;
+    font-size: 0.75rem;
+    min-width: 45px;
+  }
+}
+
+/* Small phones */
+@media (max-width: 480px) {
+  .team-calendar-page {
+    padding: 0.75rem;
+  }
+
+  .calendar-sidebar {
+    gap: 1rem;
+  }
+
+  .selected-date-card h3,
+  .legend-card h3,
+  .upcoming-leaves-card h3 {
+    font-size: 0.85rem;
+  }
+
+  .team-leaves-list h4 {
+    font-size: 0.8rem;
+  }
+
+  .legend-dot {
+    width: 14px;
+    height: 14px;
+  }
+
+  .legend-item {
+    font-size: 0.8rem;
+  }
+
+  .upcoming-name {
+    font-size: 0.8rem;
+  }
+
+  .upcoming-type {
+    font-size: 0.7rem;
+  }
+}

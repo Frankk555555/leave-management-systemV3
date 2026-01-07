@@ -3,7 +3,9 @@ import { leaveRequestsAPI } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../components/common/Toast";
 import Navbar from "../components/common/Navbar";
+import Loading from "../components/common/Loading";
 import generateLeavePDF from "../utils/generateLeavePDF";
+import config from "../config";
 import "./LeaveHistory.css";
 
 // React Icons
@@ -115,12 +117,12 @@ const LeaveHistory = () => {
 
   // เปิดไฟล์แนบในหน้าต่างใหม่
   const handlePreview = (fileUrl) => {
-    // Normalize path - handle both old format (uploads\file.pdf) and new format (/uploads/file.pdf)
+    // Normalize path - handle both old format (uploads\\file.pdf) and new format (/uploads/file.pdf)
     let normalizedPath = fileUrl.replace(/\\/g, "/");
     if (!normalizedPath.startsWith("/")) {
       normalizedPath = "/" + normalizedPath;
     }
-    window.open(`http://localhost:5000${normalizedPath}`, "_blank");
+    window.open(`${config.API_URL}${normalizedPath}`, "_blank");
   };
 
   const getLeaveTypeName = (type) => {
@@ -215,9 +217,7 @@ const LeaveHistory = () => {
     return (
       <>
         <Navbar />
-        <div className="loading-container">
-          <div className="loading-spinner"></div>
-        </div>
+        <Loading size="fullpage" text="กำลังโหลด..." />
       </>
     );
   }
@@ -228,9 +228,7 @@ const LeaveHistory = () => {
       <div className="leave-history-page">
         <div className="page-header">
           <div>
-            <h1>
-              ประวัติการลา
-            </h1>
+            <h1>ประวัติการลา</h1>
             <p>รายการคำขอลาทั้งหมดของคุณ</p>
           </div>
           <div className="filter-tabs">
@@ -363,7 +361,7 @@ const LeaveHistory = () => {
                     </span>
                     <div className="footer-right">
                       <button
-                        className="pdf-btn"
+                        className="pdf-btn-leave"
                         onClick={() => handleDownloadPDF(request)}
                         title="ดาวน์โหลดใบลา PDF"
                       >
@@ -386,7 +384,7 @@ const LeaveHistory = () => {
                         <FaEdit /> แก้ไข
                       </button>
                       <button
-                        className="cancel-btn"
+                        className="cancel-btn-leave"
                         onClick={() => handleCancel(request.id || request._id)}
                       >
                         <FaTimes /> ยกเลิก
@@ -415,9 +413,31 @@ const LeaveHistory = () => {
                       setEditForm({ ...editForm, leaveType: e.target.value })
                     }
                   >
-                    <option value="sick"> ลาป่วย</option>
-                    <option value="personal"> ลากิจ</option>
-                    <option value="vacation"> ลาพักร้อน</option>
+                    <option value="sick">
+                      ลาป่วย ({user?.leaveBalance?.sick || 0} วัน)
+                    </option>
+                    <option value="personal">
+                      ลากิจส่วนตัว ({user?.leaveBalance?.personal || 0} วัน)
+                    </option>
+                    <option value="vacation">
+                      ลาพักผ่อน ({user?.leaveBalance?.vacation || 0} วัน)
+                    </option>
+                    <option value="maternity">
+                      ลาคลอดบุตร ({user?.leaveBalance?.maternity || 0} วัน)
+                    </option>
+                    <option value="paternity">
+                      ลาช่วยภรรยาคลอด ({user?.leaveBalance?.paternity || 0} วัน)
+                    </option>
+                    <option value="childcare">
+                      ลาเลี้ยงดูบุตร ({user?.leaveBalance?.childcare || 0} วัน)
+                    </option>
+                    <option value="ordination">
+                      ลาอุปสมบท/ฮัจย์ ({user?.leaveBalance?.ordination || 0}{" "}
+                      วัน)
+                    </option>
+                    <option value="military">
+                      ลาตรวจเลือก ({user?.leaveBalance?.military || 0} วัน)
+                    </option>
                   </select>
                 </div>
                 <div className="form-row">

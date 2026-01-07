@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import SEO, { SEOConfig } from "../components/common/SEO";
 import "./Login.css";
 import React from "react";
 
@@ -29,57 +30,60 @@ const Login = () => {
   };
 
   return (
-    <div className="login-container">
-      <div className="login-background">
-        <div className="shape shape-1"></div>
-        <div className="shape shape-2"></div>
-        <div className="shape shape-3"></div>
-      </div>
-
-      <div className="login-card">
-        <div className="login-header">
-          <div className="logo">🎓</div>
-          <h1>ระบบบริหารการลางานของบุคลากร</h1>
-          <p>มหาวิทยาลัยราชภัฏบุรีรัมย์</p>
+    <>
+      <SEO {...SEOConfig.login} />
+      <div className="login-container">
+        <div className="login-background">
+          <div className="shape shape-1"></div>
+          <div className="shape shape-2"></div>
+          <div className="shape shape-3"></div>
         </div>
 
-        <form onSubmit={handleSubmit} className="login-form">
-          {error && <div className="error-message">{error}</div>}
-
-          <div className="form-group">
-            <label htmlFor="email">อีเมล</label>
-            <input
-              type="email"
-              id="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="your@email.com"
-              required
-            />
+        <div className="login-card">
+          <div className="login-header">
+            <div className="logo">🎓</div>
+            <h1>ระบบบริหารการลางานของบุคลากร</h1>
+            <p>มหาวิทยาลัยราชภัฏบุรีรัมย์</p>
           </div>
 
-          <div className="form-group">
-            <label htmlFor="password">รหัสผ่าน</label>
-            <input
-              type="password"
-              id="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              required
-            />
+          <form onSubmit={handleSubmit} className="login-form">
+            {error && <div className="error-message">{error}</div>}
+
+            <div className="form-group">
+              <label htmlFor="email">อีเมล</label>
+              <input
+                type="email"
+                id="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="your@email.com"
+                required
+              />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="password">รหัสผ่าน</label>
+              <input
+                type="password"
+                id="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                required
+              />
+            </div>
+
+            <button type="submit" className="login-btn" disabled={loading}>
+              {loading ? "กำลังเข้าสู่ระบบ..." : "เข้าสู่ระบบ"}
+            </button>
+          </form>
+
+          <div className="login-footer">
+            <p>กรุณาติดต่อผู้ดูแลระบบหากต้องการสร้างบัญชี</p>
           </div>
-
-          <button type="submit" className="login-btn" disabled={loading}>
-            {loading ? "กำลังเข้าสู่ระบบ..." : "เข้าสู่ระบบ"}
-          </button>
-        </form>
-
-        <div className="login-footer">
-          <p>กรุณาติดต่อผู้ดูแลระบบหากต้องการสร้างบัญชี</p>
         </div>
       </div>
-    </div>
+    </>
   );
 };
 

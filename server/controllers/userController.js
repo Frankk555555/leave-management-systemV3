@@ -182,12 +182,14 @@ const updateUser = async (req, res) => {
       position,
       role,
       supervisorId,
+      startDate,
       leaveBalance,
     } = req.body;
 
     // Handle empty strings for optional fields
     const safeDepartmentId = departmentId === "" ? null : departmentId;
     const safeSupervisorId = supervisorId === "" ? null : supervisorId;
+    const safeStartDate = startDate === "" ? null : startDate;
 
     // Update user fields
     await user.update({
@@ -200,6 +202,7 @@ const updateUser = async (req, res) => {
       role: role || user.role,
       supervisorId:
         safeSupervisorId !== undefined ? safeSupervisorId : user.supervisorId,
+      startDate: safeStartDate !== undefined ? safeStartDate : user.startDate,
     });
 
     // Update leave balance if provided
@@ -238,6 +241,20 @@ const deleteUser = async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
+
+    // Import models for cascade delete
+    const { LeaveBalance, LeaveRequest, Notification } = require("../models");
+
+    // Delete related records first
+    await LeaveBalance.destroy({ where: { userId: user.id } });
+    await Notification.destroy({ where: { userId: user.id } });
+    await LeaveRequest.destroy({ where: { userId: user.id } });
+
+    // Update supervisor references
+    await User.update(
+      { supervisorId: null },
+      { where: { supervisorId: user.id } }
+    );
 
     await user.destroy();
     res.json({ message: "User removed" });
@@ -298,7 +315,22 @@ const updateProfile = async (req, res) => {
     if (lastName) user.lastName = lastName;
     if (email) user.email = email;
     if (phone !== undefined) user.phone = phone;
+
+    // Password validation
     if (password && password.trim() !== "") {
+      if (password.length < 8) {
+        return res
+          .status(400)
+          .json({ message: "รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร" });
+      }
+      const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/;
+      if (!passwordRegex.test(password)) {
+        return res
+          .status(400)
+          .json({
+            message: "รหัสผ่านต้องมีตัวพิมพ์เล็ก ตัวพิมพ์ใหญ่ และตัวเลข",
+          });
+      }
       user.password = password; // Will be hashed by beforeUpdate hook
     }
 
@@ -348,6 +380,250 @@ const updateProfileImage = async (req, res) => {
   }
 };
 
+// @desc    Reset user password (Admin only)
+// @route   PUT /api/users/:id/reset-password
+// @access  Private/Admin
+const resetUserPassword = async (req, res) => {
+  try {
+    const user = await User.findByPk(req.params.id);
+
+    if (!user) {
+      return res.status(404).json({ message: "ไม่พบผู้ใช้" });
+    }
+
+    const { newPassword } = req.body;
+
+    if (!newPassword || newPassword.trim() === "") {
+      return res.status(400).json({ message: "กรุณากรอกรหัสผ่านใหม่" });
+    }
+
+    // Enhanced password validation
+    if (newPassword.length < 8) {
+      return res
+        .status(400)
+        .json({ message: "รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร" });
+    }
+
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/;
+    if (!passwordRegex.test(newPassword)) {
+      return res
+        .status(400)
+        .json({ message: "รหัสผ่านต้องมีตัวพิมพ์เล็ก ตัวพิมพ์ใหญ่ และตัวเลข" });
+    }
+
+    user.password = newPassword; // Will be hashed by beforeUpdate hook
+    await user.save();
+
+    res.json({ message: "รีเซ็ตรหัสผ่านเรียบร้อยแล้ว" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+// @desc    Import users from CSV/Excel file
+// @route   POST /api/users/import
+// @access  Private/Admin
+const importUsers = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: "กรุณาอัปโหลดไฟล์" });
+    }
+
+    const ExcelJS = require("exceljs");
+    const workbook = new ExcelJS.Workbook();
+    const filePath = req.file.path;
+    const fileExtension = req.file.originalname.split(".").pop().toLowerCase();
+
+    // Read file based on extension
+    if (fileExtension === "csv") {
+      await workbook.csv.readFile(filePath, {
+        parserOptions: {
+          encoding: "utf8",
+        },
+      });
+    } else if (fileExtension === "xlsx" || fileExtension === "xls") {
+      await workbook.xlsx.readFile(filePath);
+    } else {
+      return res
+        .status(400)
+        .json({ message: "รองรับเฉพาะไฟล์ .csv, .xlsx, .xls" });
+    }
+
+    const worksheet = workbook.worksheets[0];
+    if (!worksheet) {
+      return res.status(400).json({ message: "ไม่พบข้อมูลในไฟล์" });
+    }
+
+    const results = {
+      success: [],
+      failed: [],
+    };
+
+    // Get header row
+    const headerRow = worksheet.getRow(1);
+    const headers = {};
+    headerRow.eachCell((cell, colNumber) => {
+      const value = cell.value?.toString().toLowerCase().trim();
+      headers[value] = colNumber;
+    });
+
+    // Required fields
+    const requiredFields = [
+      "employeeid",
+      "firstname",
+      "lastname",
+      "email",
+      "password",
+      "position",
+    ];
+    const missingFields = requiredFields.filter((f) => !headers[f]);
+    if (missingFields.length > 0) {
+      return res.status(400).json({
+        message: `ไม่พบคอลัมน์ที่จำเป็น: ${missingFields.join(", ")}`,
+      });
+    }
+
+    // Process each row (skip header)
+    for (let rowNumber = 2; rowNumber <= worksheet.rowCount; rowNumber++) {
+      const row = worksheet.getRow(rowNumber);
+      const rowData = {};
+
+      // Extract data from row
+      rowData.employeeId = row
+        .getCell(headers["employeeid"])
+        ?.value?.toString()
+        .trim();
+      rowData.firstName = row
+        .getCell(headers["firstname"])
+        ?.value?.toString()
+        .trim();
+      rowData.lastName = row
+        .getCell(headers["lastname"])
+        ?.value?.toString()
+        .trim();
+      rowData.email = row.getCell(headers["email"])?.value?.toString().trim();
+      rowData.password = row
+        .getCell(headers["password"])
+        ?.value?.toString()
+        .trim();
+      rowData.position = row
+        .getCell(headers["position"])
+        ?.value?.toString()
+        .trim();
+      rowData.role = headers["role"]
+        ? row.getCell(headers["role"])?.value?.toString().trim() || "employee"
+        : "employee";
+      rowData.departmentId = headers["departmentid"]
+        ? row.getCell(headers["departmentid"])?.value || null
+        : null;
+      rowData.supervisorId = headers["supervisorid"]
+        ? row.getCell(headers["supervisorid"])?.value || null
+        : null;
+
+      // Skip empty rows
+      if (!rowData.employeeId && !rowData.email) {
+        continue;
+      }
+
+      // Validate required fields
+      const missingRowFields = [];
+      if (!rowData.employeeId) missingRowFields.push("employeeId");
+      if (!rowData.firstName) missingRowFields.push("firstName");
+      if (!rowData.lastName) missingRowFields.push("lastName");
+      if (!rowData.email) missingRowFields.push("email");
+      if (!rowData.password) missingRowFields.push("password");
+      if (!rowData.position) missingRowFields.push("position");
+
+      if (missingRowFields.length > 0) {
+        results.failed.push({
+          row: rowNumber,
+          employeeId: rowData.employeeId || "-",
+          reason: `ข้อมูลไม่ครบ: ${missingRowFields.join(", ")}`,
+        });
+        continue;
+      }
+
+      // Validate role
+      const validRoles = ["employee", "head", "admin"];
+      if (!validRoles.includes(rowData.role)) {
+        rowData.role = "employee";
+      }
+
+      try {
+        // Check if user already exists
+        const existingUser = await User.findOne({
+          where: {
+            [Op.or]: [
+              { email: rowData.email },
+              { employeeId: rowData.employeeId },
+            ],
+          },
+        });
+
+        if (existingUser) {
+          results.failed.push({
+            row: rowNumber,
+            employeeId: rowData.employeeId,
+            reason: "มีผู้ใช้นี้ในระบบแล้ว (email หรือ employeeId ซ้ำ)",
+          });
+          continue;
+        }
+
+        // Create user
+        const user = await User.create({
+          employeeId: rowData.employeeId,
+          firstName: rowData.firstName,
+          lastName: rowData.lastName,
+          email: rowData.email,
+          password: rowData.password,
+          position: rowData.position,
+          role: rowData.role,
+          departmentId: rowData.departmentId || null,
+          supervisorId: rowData.supervisorId || null,
+        });
+
+        // Create leave balance with default values
+        await LeaveBalance.create({
+          userId: user.id,
+          sick: 60,
+          personal: 45,
+          vacation: 10,
+          maternity: 90,
+          paternity: 15,
+          childcare: 150,
+          ordination: 120,
+          military: 60,
+        });
+
+        results.success.push({
+          row: rowNumber,
+          employeeId: rowData.employeeId,
+          name: `${rowData.firstName} ${rowData.lastName}`,
+        });
+      } catch (error) {
+        results.failed.push({
+          row: rowNumber,
+          employeeId: rowData.employeeId,
+          reason: error.message,
+        });
+      }
+    }
+
+    // Delete uploaded file
+    const fs = require("fs");
+    fs.unlinkSync(filePath);
+
+    res.json({
+      message: `นำเข้าข้อมูลเสร็จสิ้น: สำเร็จ ${results.success.length} รายการ, ล้มเหลว ${results.failed.length} รายการ`,
+      results,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
 module.exports = {
   getUsers,
   getUserById,
@@ -357,4 +633,6 @@ module.exports = {
   getSupervisors,
   updateProfile,
   updateProfileImage,
+  resetUserPassword,
+  importUsers,
 };

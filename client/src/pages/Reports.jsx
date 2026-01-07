@@ -13,6 +13,7 @@ import { Bar, Doughnut } from "react-chartjs-2";
 import { reportsAPI } from "../services/api";
 import { useToast } from "../components/common/Toast";
 import Navbar from "../components/common/Navbar";
+import Loading from "../components/common/Loading";
 import {
   FaChartBar,
   FaFileExcel,
@@ -191,9 +192,7 @@ const Reports = () => {
     return (
       <>
         <Navbar />
-        <div className="loading-container">
-          <div className="loading-spinner"></div>
-        </div>
+        <Loading size="fullpage" text="กำลังโหลด..." />
       </>
     );
   }

@@ -65,6 +65,12 @@ const User = sequelize.define(
       field: "profile_image",
       comment: "Path to profile image file",
     },
+    startDate: {
+      type: DataTypes.DATEONLY,
+      allowNull: true,
+      field: "start_date",
+      comment: "วันที่เริ่มรับราชการ (เพื่อคำนวณอายุราชการ)",
+    },
   },
   {
     tableName: "users",

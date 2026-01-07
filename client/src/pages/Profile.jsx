@@ -3,6 +3,7 @@ import { usersAPI } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../components/common/Toast";
 import Navbar from "../components/common/Navbar";
+import config from "../config";
 import {
   FaUser,
   FaSave,
@@ -148,7 +149,7 @@ const Profile = () => {
 
   const getProfileImageUrl = () => {
     if (user?.profileImage) {
-      return `http://localhost:5000${user.profileImage}`;
+      return `${config.API_URL}${user.profileImage}`;
     }
     return null;
   };

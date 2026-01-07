@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { leaveTypesAPI, reportsAPI } from "../services/api";
 import { useToast } from "../components/common/Toast";
 import Navbar from "../components/common/Navbar";
+import Loading from "../components/common/Loading";
 import {
   FaHospital,
   FaClipboardList,
@@ -173,9 +174,7 @@ const LeaveTypeManagement = () => {
     return (
       <>
         <Navbar />
-        <div className="loading-container">
-          <div className="loading-spinner"></div>
-        </div>
+        <Loading size="fullpage" text="กำลังโหลด..." />
       </>
     );
   }

@@ -30,6 +30,19 @@ const LeaveBalance = sequelize.define(
     vacation: {
       type: DataTypes.INTEGER,
       defaultValue: 10,
+      comment: "วันลาพักผ่อนรวม (สะสม + ปีปัจจุบัน) - ใช้สำหรับแสดงผล",
+    },
+    vacationAccrued: {
+      type: DataTypes.INTEGER,
+      defaultValue: 0,
+      field: "vacation_accrued",
+      comment: "วันลาพักผ่อนสะสมจากปีก่อน",
+    },
+    vacationCurrentYear: {
+      type: DataTypes.INTEGER,
+      defaultValue: 10,
+      field: "vacation_current_year",
+      comment: "วันลาพักผ่อนปีปัจจุบัน (10 วัน)",
     },
     maternity: {
       type: DataTypes.INTEGER,

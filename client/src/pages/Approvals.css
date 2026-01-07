@@ -41,14 +41,18 @@
 .avatar {
   width: 48px;
   height: 48px;
+  min-width: 48px;
   background: linear-gradient(135deg, #667eea, #764ba2);
   color: white;
-  border-radius: 12px;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 1.25rem;
   font-weight: 600;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+  border: 2px solid white;
 }
 
 .employee-info h4 {
@@ -215,18 +219,22 @@
 .cancel-btn {
   flex: 1;
   padding: 0.875rem;
-  background: #e2e8f0;
-  color: #4a5568;
+  background-color: #fd1313;
+  color: #ffffff;
   border: none;
-  border-radius: 10px;
+  cursor: pointer;
+  border-radius: 8px;
+  min-width: 100px;
+  height: 45px;
   font-size: 0.9rem;
   font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
+  transition: 0.3s;
 }
 
 .cancel-btn:hover {
-  background: #cbd5e0;
+  background-color: #f84040;
+  box-shadow: 0 0 0 5px #ff88095f;
+  color: #fff;
 }
 
 /* Attachment Links */
@@ -273,4 +281,119 @@
 .approvals-page .attachment-link:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+/* ==========================================
+   RESPONSIVE STYLES
+   ========================================== */
+
+/* Tablet */
+@media (max-width: 1024px) {
+  .approvals-page {
+    padding: 1.5rem;
+  }
+
+  .approvals-grid {
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 1rem;
+  }
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+  .approvals-page {
+    padding: 1rem;
+  }
+
+  .approvals-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .approval-card {
+    border-radius: 14px;
+  }
+
+  .approval-card .card-header {
+    flex-direction: column;
+    gap: 0.75rem;
+    align-items: flex-start;
+    padding: 1rem;
+  }
+
+  .leave-type-badge {
+    align-self: flex-start;
+  }
+
+  .approval-card .card-body {
+    padding: 1rem;
+  }
+
+  .approval-card .date-range-display {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .approval-card .days-count {
+    margin-left: 0;
+    width: 100%;
+    flex-direction: row;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+  }
+
+  .card-actions {
+    flex-direction: column;
+    padding: 1rem;
+    gap: 0.5rem;
+  }
+
+  .approve-btn,
+  .reject-btn {
+    width: 100%;
+    padding: 0.875rem 1rem;
+  }
+
+  .modal-content {
+    padding: 1.5rem;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+
+  .modal-actions {
+    flex-direction: column;
+  }
+
+  .cancel-btn {
+    order: 2;
+  }
+}
+
+/* Small phones */
+@media (max-width: 480px) {
+  .approvals-page {
+    padding: 0.75rem;
+  }
+
+  .avatar {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    font-size: 1rem;
+  }
+
+  .employee-info h4 {
+    font-size: 0.9rem;
+  }
+
+  .leave-type-badge {
+    font-size: 0.8rem;
+    padding: 0.4rem 0.6rem;
+  }
+
+  .reason-text {
+    font-size: 0.85rem;
+  }
 }

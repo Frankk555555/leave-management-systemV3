@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import Calendar from "react-calendar";
 import { holidaysAPI, leaveRequestsAPI } from "../services/api";
 import Navbar from "../components/common/Navbar";
+import Loading from "../components/common/Loading";
 import "react-calendar/dist/Calendar.css";
 import "./CalendarPage.css";
 
@@ -119,9 +120,7 @@ const CalendarPage = () => {
     return (
       <>
         <Navbar />
-        <div className="loading-container">
-          <div className="loading-spinner"></div>
-        </div>
+        <Loading size="fullpage" text="กำลังโหลด..." />
       </>
     );
   }

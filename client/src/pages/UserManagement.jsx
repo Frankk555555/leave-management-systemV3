@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { usersAPI, departmentsAPI, facultiesAPI } from "../services/api";
 import { useToast } from "../components/common/Toast";
 import Navbar from "../components/common/Navbar";
+import Loading from "../components/common/Loading";
 import {
   FaUsers,
   FaPlus,
@@ -10,6 +11,11 @@ import {
   FaHospital,
   FaClipboardList,
   FaUmbrellaBeach,
+  FaKey,
+  FaFileImport,
+  FaDownload,
+  FaCheckCircle,
+  FaTimesCircle,
 } from "react-icons/fa";
 import "./UserManagement.css";
 
@@ -24,6 +30,17 @@ const UserManagement = () => {
   const [departments, setDepartments] = useState([]);
   const [selectedFacultyId, setSelectedFacultyId] = useState("");
 
+  // Reset password modal state
+  const [resetModalOpen, setResetModalOpen] = useState(false);
+  const [userToReset, setUserToReset] = useState(null);
+  const [newPassword, setNewPassword] = useState("");
+
+  // Import modal state
+  const [importModalOpen, setImportModalOpen] = useState(false);
+  const [importFile, setImportFile] = useState(null);
+  const [importing, setImporting] = useState(false);
+  const [importResults, setImportResults] = useState(null);
+
   const [formData, setFormData] = useState({
     employeeId: "",
     firstName: "",
@@ -34,6 +51,7 @@ const UserManagement = () => {
     position: "",
     role: "employee",
     supervisorId: "",
+    startDate: "",
     leaveBalance: {
       sick: 60,
       personal: 45,
@@ -82,7 +100,11 @@ const UserManagement = () => {
   const fetchUsers = async () => {
     try {
       const response = await usersAPI.getAll();
-      setUsers(response.data);
+      // Sort by employeeId
+      const sortedUsers = response.data.sort((a, b) =>
+        a.employeeId.localeCompare(b.employeeId, undefined, { numeric: true })
+      );
+      setUsers(sortedUsers);
     } catch (error) {
       console.error("Error fetching users:", error);
     } finally {
@@ -115,6 +137,16 @@ const UserManagement = () => {
   const openModal = (user = null) => {
     if (user) {
       setEditingUser(user);
+      // Set faculty and fetch departments for this user
+      const userFacultyId =
+        user.department?.facultyId || user.department?.faculty?.id || "";
+      if (userFacultyId) {
+        setSelectedFacultyId(userFacultyId.toString());
+        fetchDepartments(userFacultyId);
+      } else {
+        setSelectedFacultyId("");
+        setDepartments([]);
+      }
       setFormData({
         employeeId: user.employeeId,
         firstName: user.firstName,
@@ -122,9 +154,10 @@ const UserManagement = () => {
         email: user.email,
         password: "",
         departmentId: user.departmentId || user.department?.id || "",
-        position: user.position,
+        position: user.position || "",
         role: user.role,
         supervisorId: user.supervisorId || user.supervisor?.id || "",
+        startDate: user.startDate ? user.startDate.split("T")[0] : "",
         leaveBalance: user.leaveBalance || {
           sick: 60,
           personal: 45,
@@ -148,6 +181,7 @@ const UserManagement = () => {
         position: "",
         role: "employee",
         supervisorId: "",
+        startDate: "",
         leaveBalance: {
           sick: 60,
           personal: 45,
@@ -207,6 +241,35 @@ const UserManagement = () => {
     return roles[role] || role;
   };
 
+  // Reset password handlers
+  const openResetModal = (user) => {
+    setUserToReset(user);
+    setNewPassword("");
+    setResetModalOpen(true);
+  };
+
+  const handleResetPassword = async (e) => {
+    e.preventDefault();
+    if (!userToReset) return;
+
+    try {
+      await usersAPI.resetPassword(
+        userToReset.id || userToReset._id,
+        newPassword
+      );
+      toast.success(
+        `รีเซ็ตรหัสผ่านของ ${userToReset.firstName} ${userToReset.lastName} เรียบร้อยแล้ว`
+      );
+      setResetModalOpen(false);
+      setUserToReset(null);
+      setNewPassword("");
+    } catch (error) {
+      toast.error(
+        error.response?.data?.message || "เกิดข้อผิดพลาดในการรีเซ็ตรหัสผ่าน"
+      );
+    }
+  };
+
   const getRoleBadge = (role) => {
     const styles = {
       admin: {
@@ -230,13 +293,49 @@ const UserManagement = () => {
     );
   };
 
+  // Import handlers
+  const openImportModal = () => {
+    setImportModalOpen(true);
+    setImportFile(null);
+    setImportResults(null);
+  };
+
+  const handleImportUsers = async (e) => {
+    e.preventDefault();
+    if (!importFile) {
+      toast.error("กรุณาเลือกไฟล์");
+      return;
+    }
+
+    setImporting(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", importFile);
+      const response = await usersAPI.importUsers(formData);
+      setImportResults(response.data.results);
+      toast.success(response.data.message);
+      fetchUsers();
+      fetchSupervisors();
+    } catch (error) {
+      toast.error(
+        error.response?.data?.message || "เกิดข้อผิดพลาดในการนำเข้าข้อมูล"
+      );
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const closeImportModal = () => {
+    setImportModalOpen(false);
+    setImportFile(null);
+    setImportResults(null);
+  };
+
   if (loading) {
     return (
       <>
         <Navbar />
-        <div className="loading-container">
-          <div className="loading-spinner"></div>
-        </div>
+        <Loading size="fullpage" text="กำลังโหลด..." />
       </>
     );
   }
@@ -250,9 +349,14 @@ const UserManagement = () => {
             <h1>จัดการบุคลากร</h1>
             <p>จัดการข้อมูลบุคลากรในระบบ ({users.length} คน)</p>
           </div>
-          <button className="add-btn" onClick={() => openModal()}>
-            <FaPlus style={{ marginRight: "6px" }} /> เพิ่มบุคลากร
-          </button>
+          <div className="header-actions">
+            <button className="import-btn" onClick={openImportModal}>
+              <FaFileImport style={{ marginRight: "6px" }} /> นำเข้าข้อมูล
+            </button>
+            <button className="add-btn" onClick={() => openModal()}>
+              <FaPlus style={{ marginRight: "6px" }} /> เพิ่มบุคลากร
+            </button>
+          </div>
         </div>
 
         <div className="users-table-container">
@@ -303,16 +407,25 @@ const UserManagement = () => {
                   <td>
                     <div className="action-btns">
                       <button
-                        className="edit-btn"
+                        className="edit-btn-admin"
                         onClick={() => openModal(user)}
+                        title="แก้ไข"
                       >
-                        <FaEdit />
+                        <FaEdit style={{ color: "white" }} />
                       </button>
                       <button
-                        className="delete-btn"
-                        onClick={() => handleDelete(user.id || user._id)}
+                        className="reset-btn-admin"
+                        onClick={() => openResetModal(user)}
+                        title="รีเซ็ตรหัสผ่าน"
                       >
-                        <FaTrash />
+                        <FaKey style={{ color: "white" }} />
+                      </button>
+                      <button
+                        className="delete-btn-admin"
+                        onClick={() => handleDelete(user.id || user._id)}
+                        title="ลบ"
+                      >
+                        <FaTrash style={{ color: "white" }} />
                       </button>
                     </div>
                   </td>
@@ -441,6 +554,15 @@ const UserManagement = () => {
                       required
                     />
                   </div>
+                  <div className="form-group">
+                    <label>วันเริ่มรับราชการ</label>
+                    <input
+                      type="date"
+                      name="startDate"
+                      value={formData.startDate}
+                      onChange={handleChange}
+                    />
+                  </div>
                 </div>
 
                 <div className="form-row">
@@ -527,16 +649,157 @@ const UserManagement = () => {
                 <div className="modal-actions">
                   <button
                     type="button"
-                    className="cancel-btn"
+                    className="cancel-btn-form-edit"
                     onClick={() => setModalOpen(false)}
                   >
                     ยกเลิก
                   </button>
-                  <button type="submit" className="submit-btn">
+                  <button type="submit" className="submit-btn-form-edit">
                     {editingUser ? "บันทึก" : "เพิ่ม"}
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* Reset Password Modal */}
+        {resetModalOpen && (
+          <div
+            className="modal-overlay"
+            onClick={() => setResetModalOpen(false)}
+          >
+            <div
+              className="modal-content reset-modal"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3>
+                <FaKey style={{ marginRight: "8px" }} /> รีเซ็ตรหัสผ่าน
+              </h3>
+              <p className="reset-info">
+                รีเซ็ตรหัสผ่านให้{" "}
+                <strong>
+                  {userToReset?.firstName} {userToReset?.lastName}
+                </strong>
+              </p>
+              <form onSubmit={handleResetPassword}>
+                <div className="form-group">
+                  <label>รหัสผ่านใหม่</label>
+                  <input
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    required
+                    minLength={6}
+                    placeholder="กรอกรหัสผ่านใหม่ (อย่างน้อย 6 ตัวอักษร)"
+                  />
+                </div>
+                <div className="modal-actions">
+                  <button
+                    type="button"
+                    className="cancel-btn-form-editpass"
+                    onClick={() => setResetModalOpen(false)}
+                  >
+                    ยกเลิก
+                  </button>
+                  <button type="submit" className="submit-btn-form-editpass">
+                    รีเซ็ตรหัสผ่าน
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Import Modal */}
+        {importModalOpen && (
+          <div className="modal-overlay" onClick={closeImportModal}>
+            <div
+              className="modal-content import-modal"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3>
+                <FaFileImport style={{ marginRight: "8px" }} />{" "}
+                นำเข้าข้อมูลบุคลากร
+              </h3>
+
+              {!importResults ? (
+                <form onSubmit={handleImportUsers}>
+                  <div className="import-info">
+                    <p>อัปโหลดไฟล์ CSV หรือ Excel (.xlsx) ที่มีข้อมูลบุคลากร</p>
+                    <div className="template-info">
+                      <strong>คอลัมน์ที่ต้องมี:</strong>
+                      <code>
+                        employeeId, firstName, lastName, email, password,
+                        position
+                      </code>
+                      <br />
+                      <strong>คอลัมน์เพิ่มเติม (ไม่บังคับ):</strong>
+                      <code>role, departmentId, supervisorId</code>
+                    </div>
+                  </div>
+
+                  <div className="form-group">
+                    <label>เลือกไฟล์</label>
+                    <input
+                      type="file"
+                      className="import-file-input"
+                      accept=".csv,.xlsx,.xls"
+                      onChange={(e) => setImportFile(e.target.files[0])}
+                      required
+                    />
+                  </div>
+
+                  <div className="modal-actions">
+                    <button
+                      type="button"
+                      className="cancel-btn"
+                      onClick={closeImportModal}
+                    >
+                      ยกเลิก
+                    </button>
+                    <button
+                      type="submit"
+                      className="submit-btn-import-submit"
+                      disabled={importing}
+                    >
+                      {importing ? "กำลังนำเข้า..." : "นำเข้าข้อมูล"}
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <div className="import-results">
+                  <div className="results-summary">
+                    <div className="result-success">
+                      <FaCheckCircle />
+                      <span>สำเร็จ: {importResults.success.length} รายการ</span>
+                    </div>
+                    <div className="result-failed">
+                      <FaTimesCircle />
+                      <span>ล้มเหลว: {importResults.failed.length} รายการ</span>
+                    </div>
+                  </div>
+
+                  {importResults.failed.length > 0 && (
+                    <div className="failed-list">
+                      <strong>รายการที่ล้มเหลว:</strong>
+                      <ul>
+                        {importResults.failed.map((item, index) => (
+                          <li key={index}>
+                            แถว {item.row} ({item.employeeId}): {item.reason}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  <div className="modal-actions">
+                    <button className="submit-btn" onClick={closeImportModal}>
+                      ปิด
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
