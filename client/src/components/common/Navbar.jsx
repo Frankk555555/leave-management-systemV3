@@ -19,6 +19,7 @@ import {
   FaSignOutAlt,
   FaBars,
   FaTimes,
+  FaBookOpen,
 } from "react-icons/fa";
 
 const Navbar = () => {
@@ -79,7 +80,7 @@ const Navbar = () => {
               }
               onClick={closeMenu}
             >
-              <FaEdit style={{ marginRight: "0.3rem" }} /> ขอลา
+              <FaEdit style={{ marginRight: "0.3rem" }} /> ยื่นลา
             </NavLink>
             <NavLink
               to="/leave-history"
@@ -112,7 +113,36 @@ const Navbar = () => {
             <FaUsers style={{ marginRight: "0.3rem" }} /> วันลาทีม
           </NavLink>
         )}
+        <NavLink
+          to="/forms"
+          className={({ isActive }) =>
+            isActive ? "nav-link active" : "nav-link"
+          }
+          onClick={closeMenu}
+        >
+          <FaFileAlt style={{ marginRight: "0.3rem" }} /> แบบฟอร์ม
+        </NavLink>
+        <NavLink
+          to="/regulations"
+          className={({ isActive }) =>
+            isActive ? "nav-link active" : "nav-link"
+          }
+          onClick={closeMenu}
+        >
+          <FaBookOpen style={{ marginRight: "0.3rem" }} /> ระเบียบการลา
+        </NavLink>
 
+        {isAdmin && (
+          <NavLink
+            to="/admin/leaves"
+            className={({ isActive }) =>
+              isActive ? "nav-link active" : "nav-link"
+            }
+            onClick={closeMenu}
+          >
+            <FaClipboardList style={{ marginRight: "0.3rem" }} /> จัดการใบลา
+          </NavLink>
+        )}
         {isAdmin && (
           <div className="nav-dropdown">
             <span className="nav-link dropdown-toggle">
@@ -163,8 +193,8 @@ const Navbar = () => {
               {user?.role === "admin"
                 ? "ผู้ดูแลระบบ"
                 : user?.role === "supervisor" || user?.role === "head"
-                ? "หัวหน้างาน"
-                : "บุคลากร"}
+                  ? "หัวหน้างาน"
+                  : "บุคลากร"}
             </span>
           </div>
         </NavLink>

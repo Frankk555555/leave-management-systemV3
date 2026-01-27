@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { usersAPI } from "../services/api";
+import { usersAPI, facultiesAPI, departmentsAPI } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../components/common/Toast";
 import Navbar from "../components/common/Navbar";
@@ -14,6 +14,9 @@ import {
   FaIdCard,
   FaBuilding,
   FaBriefcase,
+  FaUniversity,
+  FaFileAlt,
+  FaSitemap,
 } from "react-icons/fa";
 import "./Profile.css";
 
@@ -24,14 +27,27 @@ const Profile = () => {
 
   const [loading, setLoading] = useState(false);
   const [imageLoading, setImageLoading] = useState(false);
+  const [faculties, setFaculties] = useState([]);
+  const [departments, setDepartments] = useState([]);
+  const [selectedFacultyId, setSelectedFacultyId] = useState("");
+
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
     email: "",
     phone: "",
+    departmentId: "",
+    governmentDivision: "",
+    documentNumber: "",
+    unit: "",
+    affiliation: "",
     password: "",
     confirmPassword: "",
   });
+
+  useEffect(() => {
+    fetchFaculties();
+  }, []);
 
   useEffect(() => {
     if (user) {
@@ -40,11 +56,48 @@ const Profile = () => {
         lastName: user.lastName || "",
         email: user.email || "",
         phone: user.phone || "",
+        departmentId: user.departmentId || user.department?.id || "",
+        governmentDivision: user.governmentDivision || "",
+        documentNumber: user.documentNumber || "",
+        unit: user.unit || "",
+        affiliation: user.affiliation || "",
         password: "",
         confirmPassword: "",
       });
+
+      // Set initial faculty if user has department
+      if (user.department?.facultyId) {
+        setSelectedFacultyId(user.department.facultyId);
+      }
     }
   }, [user]);
+
+  // Fetch departments when faculty changes
+  useEffect(() => {
+    if (selectedFacultyId) {
+      fetchDepartments(selectedFacultyId);
+    } else {
+      setDepartments([]);
+    }
+  }, [selectedFacultyId]);
+
+  const fetchFaculties = async () => {
+    try {
+      const response = await facultiesAPI.getAll();
+      setFaculties(response.data);
+    } catch (error) {
+      console.error("Error fetching faculties:", error);
+    }
+  };
+
+  const fetchDepartments = async (facultyId) => {
+    try {
+      const response = await departmentsAPI.getAll(facultyId);
+      setDepartments(response.data);
+    } catch (error) {
+      console.error("Error fetching departments:", error);
+    }
+  };
 
   const handleChange = (e) => {
     setFormData({
@@ -84,6 +137,11 @@ const Profile = () => {
         lastName: formData.lastName,
         email: formData.email,
         phone: formData.phone,
+        departmentId: formData.departmentId,
+        governmentDivision: formData.governmentDivision,
+        documentNumber: formData.documentNumber,
+        unit: formData.unit,
+        affiliation: formData.affiliation,
       };
 
       // Only include password if it's being changed
@@ -234,7 +292,7 @@ const Profile = () => {
                 <div className="form-group">
                   <label>
                     <FaUser style={{ marginRight: "6px" }} />
-                    ชื่อ
+                    ชื่อ (โปรดระบุคำนำหน้า)
                   </label>
                   <input
                     type="text"
@@ -283,7 +341,33 @@ const Profile = () => {
                     name="phone"
                     value={formData.phone}
                     onChange={handleChange}
-                    placeholder="0812345678"
+                  />
+                </div>
+              </div>
+
+              <div className="form-row">
+                <div className="form-group">
+                  <label>
+                    <FaUniversity style={{ marginRight: "6px" }} />
+                    ส่วนราชการ
+                  </label>
+                  <input
+                    type="text"
+                    name="governmentDivision"
+                    value={formData.governmentDivision}
+                    onChange={handleChange}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>
+                    <FaFileAlt style={{ marginRight: "6px" }} />
+                    ที่
+                  </label>
+                  <input
+                    type="text"
+                    name="documentNumber"
+                    value={formData.documentNumber}
+                    onChange={handleChange}
                   />
                 </div>
               </div>

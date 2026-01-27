@@ -19,7 +19,13 @@ const Notification = sequelize.define(
       field: "user_id",
     },
     type: {
-      type: DataTypes.ENUM("leave_request", "approval", "rejection"),
+      type: DataTypes.ENUM(
+        "leave_request",
+        "approval",
+        "rejection",
+        "confirmation",
+        "new_leave"
+      ),
       allowNull: false,
     },
     title: {

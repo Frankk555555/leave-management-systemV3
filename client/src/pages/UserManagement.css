@@ -139,30 +139,37 @@
   font-size: 1rem;
   transition: all 0.2s;
   flex-shrink: 0;
+  color: white;
 }
 
 .edit-btn-admin {
-  background: #60f85d;
+  background: linear-gradient(135deg, #667eea, #764ba2);
 }
 
 .edit-btn-admin:hover {
-  background: #127a10;
+  background: linear-gradient(135deg, #5a6fd6, #6a4093);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
 }
 
 .delete-btn-admin {
-  background: #ff7a75;
+  background: linear-gradient(135deg, #ff6b6b, #e85555);
 }
 
 .delete-btn-admin:hover {
-  background: #f42821;
+  background: linear-gradient(135deg, #e85555, #d04545);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 107, 107, 0.4);
 }
 
 .reset-btn-admin {
-  background: #ffc266;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
 }
 
 .reset-btn-admin:hover {
-  background: #fd8802;
+  background: linear-gradient(135deg, #d97706, #b45309);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
 }
 
 .user-modal {

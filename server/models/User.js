@@ -71,6 +71,30 @@ const User = sequelize.define(
       field: "start_date",
       comment: "วันที่เริ่มรับราชการ (เพื่อคำนวณอายุราชการ)",
     },
+    governmentDivision: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+      field: "government_division",
+      comment: "ส่วนราชการ",
+    },
+    documentNumber: {
+      type: DataTypes.STRING(100),
+      allowNull: true,
+      field: "document_number",
+      comment: "ที่ (เลขหนังสือ เช่น อว 0624.2/)",
+    },
+    unit: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+      field: "unit",
+      comment: "หน่วยงาน",
+    },
+    affiliation: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+      field: "affiliation",
+      comment: "สังกัด (คณะ)",
+    },
   },
   {
     tableName: "users",

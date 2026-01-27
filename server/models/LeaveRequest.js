@@ -69,7 +69,7 @@ const LeaveRequest = sequelize.define(
       field: "contact_phone",
     },
     status: {
-      type: DataTypes.ENUM("pending", "approved", "rejected"),
+      type: DataTypes.ENUM("pending", "approved", "rejected", "confirmed"),
       defaultValue: "pending",
     },
     approvedBy: {
@@ -83,6 +83,18 @@ const LeaveRequest = sequelize.define(
     rejectionReason: {
       type: DataTypes.TEXT,
       field: "rejection_reason",
+    },
+    confirmedBy: {
+      type: DataTypes.INTEGER,
+      field: "confirmed_by",
+    },
+    confirmedAt: {
+      type: DataTypes.DATE,
+      field: "confirmed_at",
+    },
+    confirmedNote: {
+      type: DataTypes.TEXT,
+      field: "confirmed_note",
     },
   },
   {

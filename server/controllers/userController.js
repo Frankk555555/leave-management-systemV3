@@ -81,6 +81,10 @@ const createUser = async (req, res) => {
       position,
       role,
       supervisorId,
+      governmentDivision,
+      documentNumber,
+      unit,
+      affiliation,
       leaveBalance,
     } = req.body;
 
@@ -110,6 +114,10 @@ const createUser = async (req, res) => {
       position,
       role: role || "employee",
       supervisorId: safeSupervisorId,
+      governmentDivision,
+      documentNumber,
+      unit,
+      affiliation,
     });
 
     // Create leave balance
@@ -183,6 +191,10 @@ const updateUser = async (req, res) => {
       role,
       supervisorId,
       startDate,
+      governmentDivision,
+      documentNumber,
+      unit,
+      affiliation,
       leaveBalance,
     } = req.body;
 
@@ -203,6 +215,14 @@ const updateUser = async (req, res) => {
       supervisorId:
         safeSupervisorId !== undefined ? safeSupervisorId : user.supervisorId,
       startDate: safeStartDate !== undefined ? safeStartDate : user.startDate,
+      governmentDivision:
+        governmentDivision !== undefined
+          ? governmentDivision
+          : user.governmentDivision,
+      documentNumber:
+        documentNumber !== undefined ? documentNumber : user.documentNumber,
+      unit: unit !== undefined ? unit : user.unit,
+      affiliation: affiliation !== undefined ? affiliation : user.affiliation,
     });
 
     // Update leave balance if provided
@@ -314,13 +334,31 @@ const updateProfile = async (req, res) => {
       return res.status(404).json({ message: "ไม่พบผู้ใช้" });
     }
 
-    const { firstName, lastName, email, phone, password } = req.body;
+    const {
+      firstName,
+      lastName,
+      email,
+      phone,
+      password,
+      governmentDivision,
+      documentNumber,
+      departmentId,
+      unit,
+      affiliation,
+    } = req.body;
 
     // Update allowed fields only
     if (firstName) user.firstName = firstName;
     if (lastName) user.lastName = lastName;
     if (email) user.email = email;
     if (phone !== undefined) user.phone = phone;
+    if (departmentId !== undefined && departmentId !== "")
+      user.departmentId = departmentId;
+    if (governmentDivision !== undefined)
+      user.governmentDivision = governmentDivision;
+    if (documentNumber !== undefined) user.documentNumber = documentNumber;
+    if (unit !== undefined) user.unit = unit;
+    if (affiliation !== undefined) user.affiliation = affiliation;
 
     // Password validation
     if (password && password.trim() !== "") {

@@ -1,5 +1,5 @@
-import { jsPDF } from "jspdf";
-import html2canvas from "html2canvas";
+import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
+import fontkit from "@pdf-lib/fontkit";
 
 // ชื่อประเภทการลา
 const LEAVE_TYPE_NAMES = {
@@ -11,6 +11,16 @@ const LEAVE_TYPE_NAMES = {
   childcare: "ลาเลี้ยงดูบุตร",
   ordination: "ลาอุปสมบท",
   military: "ลาตรวจเลือก/เตรียมพล",
+};
+
+// Mapping ประเภทลา -> ชื่อไฟล์ template
+const TEMPLATE_FILES = {
+  sick: "แบบฟอร์มขอลาป่วย-ลากิจ-ลาคลอดบุตร.pdf",
+  personal: "แบบฟอร์มขอลาป่วย-ลากิจ-ลาคลอดบุตร.pdf",
+  maternity: "แบบฟอร์มขอลาป่วย-ลากิจ-ลาคลอดบุตร.pdf",
+  vacation: "แบบฟอร์มลาพักผ่อน.pdf",
+  paternity: "แบบฟอร์มใบลาไปช่วยเหลือภริยาที่คลอดบุตร.pdf",
+  ordination: "แบบใบลาอุปสมบท.pdf",
 };
 
 /**
@@ -38,744 +48,727 @@ const formatThaiDate = (dateString) => {
   return { day, month, year, fullDate: `${day} ${month} ${year}` };
 };
 
-// URL ตราครุฑ
-const GARUDA_IMAGE_URL =
-  "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTjp4qhJsdO9oQO_YcVWIR98AjzgeTpTUaRWg&s";
+/**
+ * Helper function
+ */
+const getDepartmentName = (department) => {
+  if (!department) return "";
+  if (typeof department === "object") return department.name || "";
+  return department;
+};
+
+const getFacultyName = (department) => {
+  if (!department) return "";
+  if (typeof department === "object" && department.faculty) {
+    return department.faculty.name || "";
+  }
+  return "";
+};
 
 /**
- * สร้าง HTML สำหรับหัวเอกสาร (ใช้ร่วมกัน)
+ * โหลด Thai font
  */
-const getHeaderHTML = (title, subtitle = "") => `
-  <div style="display: flex; justify-content: space-between; margin-bottom: 15px; align-items: flex-start;">
-    <div style="flex: 1; text-align: center;">
-      <img src="${GARUDA_IMAGE_URL}" alt="ตราครุฑ" style="width: 60px; height: auto;" crossorigin="anonymous" />
-    </div>
-    <div style="flex: 2; text-align: center;">
-      <div style="font-size: 12px; color: #666; margin-bottom: 5px;">${subtitle}</div>
-      <h2 style="margin: 0; font-size: 22px; font-weight: bold;">${title}</h2>
-    </div>
-    <div style="flex: 1; text-align: right; font-size: 12px; border: 1px solid #000; padding: 8px;">
-      <div style="font-weight: bold;">กองการบริหารงานบุคคล</div>
-      <div>รับที่....................................</div>
-      <div>วันที่....................................</div>
-      <div>เวลา....................................</div>
-    </div>
-  </div>
-`;
+const loadThaiFont = async (pdfDoc) => {
+  pdfDoc.registerFontkit(fontkit);
 
-/**
- * สร้าง HTML สำหรับส่วนราชการ (ใช้ร่วมกัน)
- */
-const getDepartmentHTML = (userData, today, subject) => `
-  <div style="margin-bottom: 15px; font-size: 14px;">
-    <div style="margin-bottom: 5px;">
-      <strong>ส่วนราชการ</strong> ${
-        userData.department || "............................................."
+  // รายการ fonts ที่จะลองโหลด (THSarabun ก่อน)
+  const fontUrls = ["/fonts/THSarabun.ttf", "/fonts/Mitr-Regular.ttf"];
+
+  for (const fontUrl of fontUrls) {
+    try {
+      console.log("Trying to load font:", fontUrl);
+      const fontResponse = await fetch(fontUrl);
+
+      if (fontResponse.ok) {
+        const fontBytes = await fontResponse.arrayBuffer();
+        console.log(`Font ${fontUrl} size:`, fontBytes.byteLength);
+        // ตรวจสอบขนาดไฟล์
+        if (fontBytes.byteLength > 10000) {
+          const font = await pdfDoc.embedFont(fontBytes);
+          console.log("Thai font loaded successfully:", fontUrl);
+          return font;
+        }
       }
-    </div>
-    <div style="margin-bottom: 5px;">
-      <strong>ที่</strong> ........................... 
-      <span style="margin-left: 50px;"><strong>วันที่</strong> ${
-        today.day
-      }</span>
-      <span style="margin-left: 10px;">เดือน ${today.month}</span>
-      <span style="margin-left: 10px;">พ.ศ. ${today.year}</span>
-    </div>
-    <div style="margin-bottom: 5px;">
-      <strong>เรื่อง</strong> ${subject}
-    </div>
-    <div style="margin-bottom: 5px;">
-      <strong>เรียน</strong> อธิการบดีมหาวิทยาลัยราชภัฏบุรีรัมย์
-    </div>
-  </div>
-`;
+    } catch (error) {
+      console.warn(`Could not load ${fontUrl}:`, error.message);
+    }
+  }
 
-/**
- * สร้าง HTML สำหรับข้อมูลผู้ขอลา
- */
-const getEmployeeInfoHTML = (userData) => `
-  <div style="margin: 10px 0; font-size: 14px; line-height: 1.8;">
-    <div style="text-indent: 50px;">
-      ข้าพเจ้า <strong>${userData.firstName || ""} ${
-  userData.lastName || ""
-}</strong>
-      <span style="margin-left: 50px;">ตำแหน่ง <strong>${
-        userData.position || "............................."
-      }</strong></span>
-    </div>
-    <div>
-      สังกัดสาขาวิชา/หน่วยงาน <strong>${
-        userData.department || "............................."
-      }</strong>
-      <span style="margin-left: 30px;">คณะ/สำนัก/สถาบัน ...............................</span>
-    </div>
-    <div>มหาวิทยาลัยราชภัฏบุรีรัมย์</div>
-  </div>
-`;
-
-/**
- * สร้าง HTML สำหรับตารางสถิติการลา (แบบ 4 คอลัมน์)
- */
-const getLeaveStatsTable4Col = () => `
-  <div style="margin: 20px 0;">
-    <div style="font-weight: bold; margin-bottom: 10px;">สถิติการลาในปีงบประมาณนี้</div>
-    <table style="width: 60%; border-collapse: collapse; font-size: 12px;">
-      <tr>
-        <th style="border: 1px solid #000; padding: 5px; text-align: center;">ประเภทลา</th>
-        <th style="border: 1px solid #000; padding: 5px; text-align: center;">ลามาแล้ว<br>(วันทำการ)</th>
-        <th style="border: 1px solid #000; padding: 5px; text-align: center;">ลาครั้งนี้<br>(วันทำการ)</th>
-        <th style="border: 1px solid #000; padding: 5px; text-align: center;">รวมเป็น<br>(วันทำการ)</th>
-      </tr>
-      <tr>
-        <td style="border: 1px solid #000; padding: 8px;">ป่วย</td>
-        <td style="border: 1px solid #000; padding: 8px; text-align: center;"></td>
-        <td style="border: 1px solid #000; padding: 8px; text-align: center;"></td>
-        <td style="border: 1px solid #000; padding: 8px; text-align: center;"></td>
-      </tr>
-      <tr>
-        <td style="border: 1px solid #000; padding: 8px;">กิจส่วนตัว</td>
-        <td style="border: 1px solid #000; padding: 8px; text-align: center;"></td>
-        <td style="border: 1px solid #000; padding: 8px; text-align: center;"></td>
-        <td style="border: 1px solid #000; padding: 8px; text-align: center;"></td>
-      </tr>
-      <tr>
-        <td style="border: 1px solid #000; padding: 8px;">คลอดบุตร</td>
-        <td style="border: 1px solid #000; padding: 8px; text-align: center;"></td>
-        <td style="border: 1px solid #000; padding: 8px; text-align: center;"></td>
-        <td style="border: 1px solid #000; padding: 8px; text-align: center;"></td>
-      </tr>
-    </table>
-  </div>
-`;
-
-/**
- * สร้าง HTML สำหรับส่วนลายเซ็นและความเห็น
- */
-const getSignatureHTML = () => `
-  <div style="margin: 20px 0; font-size: 13px;">
-    <div style="margin-bottom: 15px;">
-      <strong>ลงทะเบียนวันลาแล้ว</strong>
-    </div>
-    <div style="display: flex; justify-content: space-between; margin-bottom: 30px;">
-      <div>(ลงชื่อ)............................................ ผู้ตรวจสอบ<br><span style="padding-left: 35px;">(.............................................)</span></div>
-      <div>(ลงชื่อ)............................................ ผอ.กองการบริหารงานบุคคล<br><span style="padding-left: 35px;">(.............................................)</span></div>
-    </div>
-  </div>
-
-  <div style="display: flex; justify-content: space-between; font-size: 13px; margin-top: 20px;">
-    <div style="width: 45%;">
-      <div style="font-weight: bold; margin-bottom: 20px;">๑. ความเห็นของหัวหน้าสำนักงาน/หัวหน้าภาค/<br>หัวหน้าสาขาวิชา/หัวหน้างาน</div>
-      <div style="margin-top: 30px;">(ลงชื่อ).............................................<br><span style="padding-left: 35px;">(.............................................)</span></div>
-    </div>
-    <div style="width: 45%;">
-      <div style="font-weight: bold; margin-bottom: 20px;">๒. ความเห็นของคณบดี/ผอ.สำนัก/ผอ.สถาบัน</div>
-      <div style="margin-top: 30px;">(ลงชื่อ).............................................<br><span style="padding-left: 35px;">(.............................................)</span></div>
-    </div>
-  </div>
-
-  <div style="display: flex; justify-content: flex-end; font-size: 13px; margin-top: 30px;">
-    <div style="width: 45%;">
-      <div style="font-weight: bold; margin-bottom: 10px;">๓. คำสั่งรองอธิการบดีฝ่ายบริหารงานบุคคล<br>และเทคโนโลยีสารสนเทศ</div>
-      <div style="margin: 10px 0;">
-        <span style="margin-right: 30px;">☐ อนุญาต</span>
-        <span>☐ ไม่อนุญาต</span>
-      </div>
-      <div style="margin-top: 20px;">(ลงชื่อ).............................................<br><span style="padding-left: 35px;">(.............................................)</span></div>
-      <div style="margin-top: 10px;">วันที่ ............/....................../...............</div>
-    </div>
-  </div>
-`;
-
-/**
- * ฟอร์มที่ 1: ลาป่วย / ลากิจส่วนตัว / ลาคลอดบุตร
- */
-const generateSickPersonalMaternityForm = (
-  leaveData,
-  userData,
-  today,
-  startDate,
-  endDate
-) => {
-  const leaveTypeName = LEAVE_TYPE_NAMES[leaveData.leaveType];
-  const isCheckedSick = leaveData.leaveType === "sick" ? "☑" : "☐";
-  const isCheckedPersonal = leaveData.leaveType === "personal" ? "☑" : "☐";
-  const isCheckedMaternity = leaveData.leaveType === "maternity" ? "☑" : "☐";
-
-  return `
-    <div id="leave-form-pdf" style="
-      width: 210mm;
-      min-height: 297mm;
-      padding: 15mm 20mm;
-      font-family: 'TH Sarabun New', 'Sarabun', sans-serif;
-      font-size: 14px;
-      line-height: 1.5;
-      background: white;
-      color: black;
-    ">
-      ${getHeaderHTML(
-        "บันทึกข้อความ",
-        "(หนังสือขออนุญาตลาป่วย ลาคลอดบุตร ลากิจส่วนตัว)"
-      )}
-      ${getDepartmentHTML(userData, today, "ขออนุญาตลาหยุดราชการ")}
-      ${getEmployeeInfoHTML(userData)}
-
-      <div style="margin: 15px 0; font-size: 14px; text-indent: 50px;">
-        มีความประสงค์ขออนุญาต 
-        <span style="margin: 0 10px;">${isCheckedSick} ลาป่วย</span>
-        <span style="margin: 0 10px;">${isCheckedPersonal} ลากิจส่วนตัว</span>
-        <span style="margin: 0 10px;">${isCheckedMaternity} ลาคลอดบุตร</span>
-      </div>
-
-      <div style="margin: 10px 0; font-size: 14px;">
-        <div>เนื่องจาก (เหตุผล) <strong>${
-          leaveData.reason ||
-          "............................................................................................."
-        }</strong></div>
-        <div style="margin-top: 10px;">
-          ตั้งแต่วันที่ <strong>${startDate.day}</strong> / <strong>${
-    startDate.month
-  }</strong> / <strong>${startDate.year}</strong>
-          <span style="margin-left: 20px;">ถึงวันที่ <strong>${
-            endDate.day
-          }</strong> / <strong>${endDate.month}</strong> / <strong>${
-    endDate.year
-  }</strong></span>
-          <span style="margin-left: 20px;">มีกำหนด <strong>${
-            leaveData.totalDays || "......."
-          }</strong> วัน</span>
-        </div>
-        <div style="margin-top: 10px;">
-          ข้าพเจ้าได้ ${isCheckedSick} ลาป่วย ${isCheckedPersonal} ลากิจส่วนตัว ${isCheckedMaternity} ลาคลอดบุตร ครั้งสุดท้ายเมื่อวันที่ ......./........./..........
-        </div>
-        <div style="margin-top: 5px;">
-          ถึงวันที่ ......./........./.......... /.......... มีกำหนด .............. วัน ในระหว่างลาจะติดต่อข้าพเจ้าได้ที่
-        </div>
-        <div style="margin-top: 5px;">
-          ............................................................................................................................................................
-        </div>
-        <div style="margin-top: 15px; text-indent: 50px;">จึงเรียนมาเพื่อโปรดพิจารณา</div>
-      </div>
-
-      <div style="display: flex; justify-content: space-between; margin-top: 20px;">
-        <div style="width: 55%;">
-          ${getLeaveStatsTable4Col()}
-        </div>
-        <div style="width: 40%; padding-left: 20px;">
-          <div style="margin-bottom: 30px;">
-            (ลงชื่อ).............................................<br>
-            <div style="text-align: center;">(.............................................)</div>
-          </div>
-        </div>
-      </div>
-
-      ${getSignatureHTML()}
-
-      <div style="margin-top: 20px; font-size: 12px; border-top: 1px solid #ccc; padding-top: 10px;">
-        <strong>หมายเหตุ:</strong> การลงนามของผู้บังคับบัญชาตามลำดับชั้นให้ระบุ ชื่อ - สกุล ให้ครบถ้วน
-      </div>
-    </div>
-  `;
+  console.error("No Thai font available!");
+  throw new Error(
+    "ไม่สามารถโหลด Thai font ได้ กรุณา copy ไฟล์ font จาก server/fonts/ ไปไว้ที่ client/public/fonts/",
+  );
 };
 
 /**
- * ฟอร์มที่ 2: ลาไปช่วยเหลือภริยาที่คลอดบุตร
+ * วาดข้อความลงบน PDF page
+ * หมายเหตุ: พิกัด y นับจากด้านล่างของหน้า
  */
-const generatePaternityForm = (
-  leaveData,
-  userData,
-  today,
-  startDate,
-  endDate
-) => {
-  return `
-    <div id="leave-form-pdf" style="
-      width: 210mm;
-      min-height: 297mm;
-      padding: 15mm 20mm;
-      font-family: 'TH Sarabun New', 'Sarabun', sans-serif;
-      font-size: 14px;
-      line-height: 1.5;
-      background: white;
-      color: black;
-    ">
-      ${getHeaderHTML(
-        "บันทึกข้อความ",
-        "(หนังสือขออนุญาตลาไปช่วยเหลือภริยาที่คลอดบุตร)"
-      )}
-      ${getDepartmentHTML(
-        userData,
-        today,
-        "ขออนุญาตลาไปช่วยเหลือภริยาที่คลอดบุตร"
-      )}
-      ${getEmployeeInfoHTML(userData)}
-
-      <div style="margin: 15px 0; font-size: 14px; text-indent: 50px;">
-        มีความประสงค์ขออนุญาตลาไปช่วยเหลือภริยาโดยชอบด้วยกฎหมายชื่อ .....................................................
-      </div>
-
-      <div style="margin: 10px 0; font-size: 14px;">
-        <div>
-          ซึ่งคลอดบุตรเมื่อวันที่ ......./........./.......... จึงขออนุญาตลาไปช่วยเหลือภริยาที่คลอดบุตรตั้งแต่วันที่
-        </div>
-        <div style="margin-top: 10px;">
-          <strong>${startDate.day}</strong> / <strong>${
-    startDate.month
-  }</strong> / <strong>${startDate.year}</strong>
-          <span style="margin-left: 20px;">ถึงวันที่ <strong>${
-            endDate.day
-          }</strong> / <strong>${endDate.month}</strong> / <strong>${
-    endDate.year
-  }</strong></span>
-          <span style="margin-left: 20px;">มีกำหนด <strong>${
-            leaveData.totalDays || "......."
-          }</strong> วัน</span>
-        </div>
-        <div style="margin-top: 10px;">
-          ในระหว่างลาจะติดต่อข้าพเจ้าได้ที่ ............................................................................................
-        </div>
-        <div style="margin-top: 15px; text-indent: 50px;">จึงเรียนมาเพื่อโปรดพิจารณา</div>
-      </div>
-
-      <div style="display: flex; justify-content: space-between; margin-top: 20px;">
-        <div style="width: 55%;">
-          <div style="font-weight: bold; margin-bottom: 10px;">สถิติการลาในปีงบประมาณนี้</div>
-          <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
-            <tr>
-              <th style="border: 1px solid #000; padding: 5px; text-align: center;" rowspan="2">ประเภทลา</th>
-              <th style="border: 1px solid #000; padding: 5px; text-align: center;">ลามาแล้ว</th>
-              <th style="border: 1px solid #000; padding: 5px; text-align: center;">ลาครั้งนี้</th>
-              <th style="border: 1px solid #000; padding: 5px; text-align: center;">รวมเป็น</th>
-            </tr>
-            <tr>
-              <th style="border: 1px solid #000; padding: 3px; text-align: center; font-size: 10px;">(วันทำการ)</th>
-              <th style="border: 1px solid #000; padding: 3px; text-align: center; font-size: 10px;">(วันทำการ)</th>
-              <th style="border: 1px solid #000; padding: 3px; text-align: center; font-size: 10px;">(วันทำการ)</th>
-            </tr>
-            <tr>
-              <td style="border: 1px solid #000; padding: 8px;">ช่วยเหลือ<br>ภริยาที่<br>คลอดบุตร</td>
-              <td style="border: 1px solid #000; padding: 8px; text-align: center;"></td>
-              <td style="border: 1px solid #000; padding: 8px; text-align: center;">${
-                leaveData.totalDays || ""
-              }</td>
-              <td style="border: 1px solid #000; padding: 8px; text-align: center;"></td>
-            </tr>
-          </table>
-        </div>
-        <div style="width: 40%; padding-left: 20px;">
-          <div style="margin-bottom: 30px;">
-            (ลงชื่อ).............................................<br>
-            <div style="text-align: center;">(.............................................)</div>
-          </div>
-        </div>
-      </div>
-
-      ${getSignatureHTML()}
-
-      <div style="margin-top: 20px; font-size: 12px; border-top: 1px solid #ccc; padding-top: 10px;">
-        <strong>หมายเหตุ:</strong> การลงนามของผู้บังคับบัญชาตามลำดับชั้นให้ระบุ ชื่อ - สกุล ให้ครบถ้วน
-      </div>
-    </div>
-  `;
+const drawText = (page, text, x, y, font, size = 14, color = rgb(0, 0, 0)) => {
+  if (!text) return;
+  page.drawText(String(text), {
+    x,
+    y,
+    size,
+    font,
+    color,
+  });
 };
 
 /**
- * ฟอร์มที่ 3: ลาพักผ่อน
+ * วาด calibration grid เพื่อหาพิกัดที่ถูกต้อง
+ * เปิดใช้งานโดยเปลี่ยน CALIBRATION_MODE = true
  */
-const generateVacationForm = (
-  leaveData,
-  userData,
-  today,
-  startDate,
-  endDate
-) => {
-  return `
-    <div id="leave-form-pdf" style="
-      width: 210mm;
-      min-height: 297mm;
-      padding: 15mm 20mm;
-      font-family: 'TH Sarabun New', 'Sarabun', sans-serif;
-      font-size: 14px;
-      line-height: 1.5;
-      background: white;
-      color: black;
-    ">
-      ${getHeaderHTML("บันทึกข้อความ", "(หนังสือขออนุญาตลาพักผ่อน)")}
-      ${getDepartmentHTML(userData, today, "ขออนุญาตลาพักผ่อน")}
-      ${getEmployeeInfoHTML(userData)}
+const CALIBRATION_MODE = true; // เปลี่ยนเป็น false เมื่อหาพิกัดเสร็จแล้ว
 
-      <div style="margin: 15px 0; font-size: 14px;">
-        <div>
-          มีวันลาพักผ่อนสะสม ............ วันทำการ มีสิทธิลาพักผ่อนประจำปีนี้อีก ๑๐ วันทำการ รวมเป็น ............ วันทำการ
-        </div>
-        <div style="margin-top: 10px;">
-          ขอลาพักผ่อนตั้งแต่วันที่ <strong>${startDate.day} ${
-    startDate.month
-  } ${startDate.year}</strong>
-          <span style="margin-left: 20px;">ถึงวันที่ <strong>${endDate.day} ${
-    endDate.month
-  } ${endDate.year}</strong></span>
-          <span style="margin-left: 20px;">มีกำหนด <strong>${
-            leaveData.totalDays || "......."
-          }</strong> วัน</span>
-        </div>
-        <div style="margin-top: 10px;">
-          ในระหว่างลา จะติดต่อข้าพเจ้าได้ที่ ............................................................................................
-        </div>
-        <div style="margin-top: 15px; text-indent: 50px;">จึงเรียนมาเพื่อโปรดพิจารณา</div>
-      </div>
+const drawCalibrationGrid = (page, font) => {
+  if (!CALIBRATION_MODE) return;
 
-      <div style="display: flex; justify-content: space-between; margin-top: 20px;">
-        <div style="width: 55%;">
-          <div style="font-weight: bold; margin-bottom: 10px;">สถิติการลาในปีงบประมาณนี้</div>
-          <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
-            <tr>
-              <th style="border: 1px solid #000; padding: 5px; text-align: center;">ลามาแล้ว<br>(วันทำการ)</th>
-              <th style="border: 1px solid #000; padding: 5px; text-align: center;">ลาครั้งนี้<br>(วันทำการ)</th>
-              <th style="border: 1px solid #000; padding: 5px; text-align: center;">รวมเป็น<br>(วันทำการ)</th>
-              <th style="border: 1px solid #000; padding: 5px; text-align: center;">คงเหลือสะสม<br>(วันทำการ)</th>
-            </tr>
-            <tr>
-              <td style="border: 1px solid #000; padding: 15px; text-align: center;"></td>
-              <td style="border: 1px solid #000; padding: 15px; text-align: center;">${
-                leaveData.totalDays || ""
-              }</td>
-              <td style="border: 1px solid #000; padding: 15px; text-align: center;"></td>
-              <td style="border: 1px solid #000; padding: 15px; text-align: center;"></td>
-            </tr>
-          </table>
-        </div>
-        <div style="width: 40%; padding-left: 20px;">
-          <div style="margin-bottom: 30px;">
-            (ลงชื่อ).............................................<br>
-            <div style="text-align: center;">(.............................................)</div>
-          </div>
-        </div>
-      </div>
+  const { width, height } = page.getSize();
+  const gridColor = rgb(1, 0, 0); // สีแดง
+  const textColor = rgb(0, 0, 1); // สีน้ำเงิน
 
-      <div style="margin: 20px 0;">
-        <strong>ลงทะเบียนวันลาแล้ว</strong><br>
-        <div style="margin-top: 10px;">(ลงชื่อ)............................................ ผู้ตรวจสอบ<br><span style="padding-left: 35px;">(.............................................)</span></div>
-      </div>
+  // วาดเส้น grid ทุก 50 pixels
+  for (let x = 0; x <= width; x += 50) {
+    page.drawLine({
+      start: { x, y: 0 },
+      end: { x, y: height },
+      thickness: 0.5,
+      color: gridColor,
+      opacity: 0.3,
+    });
+    // เขียนตัวเลข x
+    page.drawText(String(x), {
+      x: x + 2,
+      y: height - 15,
+      size: 8,
+      font,
+      color: textColor,
+    });
+  }
 
-      <div style="display: flex; justify-content: space-between; font-size: 13px; margin-top: 30px;">
-        <div style="width: 45%;">
-          <div style="font-weight: bold;">๑. ความเห็นของหัวหน้าสำนักงาน/หัวหน้าภาค/<br>หัวหน้าสาขาวิชา/หัวหน้างาน</div>
-          <div style="margin-top: 30px;">(ลงชื่อ).............................................<br>(.............................................)</div>
-          <div style="font-weight: bold; margin-top: 30px;">๒. ความเห็นของคณบดี/ผอ.สำนัก/ผอ.สถาบัน</div>
-          <div style="margin-top: 30px;">(ลงชื่อ).............................................<br>(.............................................)</div>
-        </div>
-        <div style="width: 45%;">
-          <div style="font-weight: bold;">๓. ความเห็นของผู้อำนวยการกองการบริหารงาน<br>บุคคล</div>
-          <div style="margin-top: 30px;">(ลงชื่อ).............................................<br>(.............................................)</div>
-          <div style="font-weight: bold; margin-top: 30px;">๔. คำสั่งรองอธิการบดีฝ่ายบริหารงานบุคคล<br>และเทคโนโลยีสารสนเทศ</div>
-          <div style="margin: 10px 0;">
-            <span style="margin-right: 30px;">☐ อนุญาต</span>
-            <span>☐ ไม่อนุญาต</span>
-          </div>
-          <div style="margin-top: 15px;">(ลงชื่อ).............................................<br>(.............................................)</div>
-        </div>
-      </div>
+  for (let y = 0; y <= height; y += 50) {
+    page.drawLine({
+      start: { x: 0, y },
+      end: { x: width, y },
+      thickness: 0.5,
+      color: gridColor,
+      opacity: 0.3,
+    });
+    // เขียนตัวเลข y (height - y เพื่อแสดงระยะจากด้านบน)
+    page.drawText(String(Math.round(height - y)), {
+      x: 2,
+      y: y + 2,
+      size: 8,
+      font,
+      color: textColor,
+    });
+  }
 
-      <div style="margin-top: 20px; font-size: 12px; border-top: 1px solid #ccc; padding-top: 10px;">
-        <strong>หมายเหตุ:</strong> การลงนามของผู้บังคับบัญชาตามลำดับชั้นให้ระบุ ชื่อ - สกุล ให้ครบถ้วน
-      </div>
-    </div>
-  `;
+  console.log(`Page size: ${width} x ${height}`);
+  console.log(
+    "Grid drawn. Red lines every 50px. Blue numbers show coordinates.",
+  );
+  console.log("Y values shown are 'height - y' (distance from top)");
 };
 
 /**
- * ฟอร์มที่ 4: ลาอุปสมบท
+ * วาด checkbox (ติ๊กถูก)
  */
-const generateOrdinationForm = (
-  leaveData,
-  userData,
-  today,
-  startDate,
-  endDate
-) => {
-  return `
-    <div id="leave-form-pdf" style="
-      width: 210mm;
-      min-height: 297mm;
-      padding: 15mm 20mm;
-      font-family: 'TH Sarabun New', 'Sarabun', sans-serif;
-      font-size: 14px;
-      line-height: 1.5;
-      background: white;
-      color: black;
-    ">
-      <div style="display: flex; justify-content: space-between; margin-bottom: 10px; align-items: flex-start;">
-        <div style="flex: 1;"></div>
-        <div style="flex: 2; text-align: center;">
-          <img src="${GARUDA_IMAGE_URL}" alt="ตราครุฑ" style="width: 60px; height: auto;" crossorigin="anonymous" />
-        </div>
-        <div style="flex: 1; text-align: right; font-size: 12px; border: 1px solid #000; padding: 8px;">
-          <div style="font-weight: bold;">กองการบริหารงานบุคคล</div>
-          <div>รับที่....................................</div>
-          <div>วันที่....................................</div>
-        </div>
-      </div>
-
-      <div style="text-align: center; margin-bottom: 20px;">
-        <h2 style="margin: 0; font-size: 24px; font-weight: bold;">ใบลาอุปสมบท</h2>
-      </div>
-
-      <div style="text-align: right; margin-bottom: 15px;">
-        <div>(เขียนที่) ........................................................</div>
-        <div style="margin-top: 5px;">วันที่ ${today.day} เดือน ${
-    today.month
-  } พ.ศ. ${today.year}</div>
-      </div>
-
-      <div style="margin-bottom: 10px;">
-        <strong>เรื่อง</strong> ขอลาอุปสมบท
-      </div>
-      <div style="margin-bottom: 15px;">
-        <strong>เรียน</strong> อธิการบดีมหาวิทยาลัยราชภัฏบุรีรัมย์
-      </div>
-
-      ${getEmployeeInfoHTML(userData)}
-
-      <div style="margin: 15px 0; font-size: 14px;">
-        <div>เกิดวันที่ .............................................. เข้ารับราชการเมื่อวันที่ ..............................................</div>
-        <div style="margin-top: 10px;">
-          ข้าพเจ้า <span style="margin: 0 15px;">☐ ยังไม่เคย</span> <span style="margin: 0 15px;">☐ เคย</span> อุปสมบท บัดนี้มีศรัทธาจะอุปสมบทในพระพุทธศาสนา
-        </div>
-        <div style="margin-top: 10px;">
-          ณ วัด ............................................................................... ตั้งอยู่ ณ ...............................................................................
-        </div>
-        <div style="margin-top: 10px;">
-          กำหนดอุปสมบทวันที่ ............................................... และจะจำพรรษาอยู่ ณ วัด ...............................................
-        </div>
-        <div style="margin-top: 10px;">
-          ตั้งอยู่ ณ ...............................................................................
-        </div>
-        <div style="margin-top: 15px;">
-          จึงขออนุญาตลาอุปสมบทตั้งแต่วันที่ <strong>${startDate.day} ${
-    startDate.month
-  } ${startDate.year}</strong>
-          ถึงวันที่ <strong>${endDate.day} ${endDate.month} ${
-    endDate.year
-  }</strong>
-          มีกำหนด <strong>${leaveData.totalDays || "......."}</strong> วัน
-        </div>
-      </div>
-
-      <div style="text-align: right; margin: 30px 0;">
-        <div>ลงชื่อ .............................................</div>
-        <div style="margin-top: 5px;">(.............................................)</div>
-      </div>
-
-      <div style="display: flex; justify-content: space-between; font-size: 13px; margin-top: 30px;">
-        <div style="width: 45%;">
-          <div style="font-weight: bold;">๑. หัวหน้าสาขาวิชา/หัวหน้างานความเห็นของ<br>หัวหน้าสำนักงาน/หัวหน้าภาค/</div>
-          <div style="margin-top: 30px;">........................................................</div>
-          <div style="margin-top: 20px;">(ลงชื่อ).............................................<br>(.............................................)</div>
-          
-          <div style="font-weight: bold; margin-top: 30px;">๒. ความเห็นของคณบดี/ผอ.สำนัก/ผอ.สถาบัน</div>
-          <div style="margin-top: 30px;">........................................................</div>
-          <div style="margin-top: 20px;">(ลงชื่อ).............................................<br>(.............................................)</div>
-
-          <div style="font-weight: bold; margin-top: 30px;">๕. คำสั่งอธิการบดีหรือผู้รักษาราชการแทน</div>
-          <div style="margin: 10px 0;">
-            <span style="margin-right: 30px;">☐ อนุญาต</span>
-            <span>☐ ไม่อนุญาต</span>
-          </div>
-          <div style="margin-top: 15px;">(ลงชื่อ).............................................<br>(.............................................)</div>
-          <div style="margin-top: 10px;">.................../....................../.................</div>
-        </div>
-        <div style="width: 45%;">
-          <div style="font-weight: bold;">๓. ความเห็นผู้อำนวยการกองการบริหารงานบุคคล</div>
-          <div style="margin-top: 30px;">........................................................</div>
-          <div style="margin-top: 20px;">(ลงชื่อ).............................................<br>(.............................................)</div>
-
-          <div style="font-weight: bold; margin-top: 30px;">๔. ความเห็นรองอธิการบดีฝ่ายบริหารงานบุคคล<br>และเทคโนโลยีสารสนเทศ</div>
-          <div style="margin: 10px 0;">
-            เห็นควร <span style="margin-right: 20px;">☐ อนุญาต</span> <span>☐ ไม่อนุญาต</span>
-          </div>
-          <div style="margin-top: 15px;">(ลงชื่อ).............................................<br>(.............................................)</div>
-        </div>
-      </div>
-
-      <div style="margin-top: 30px; font-size: 12px; border-top: 1px solid #ccc; padding-top: 10px;">
-        <strong>หมายเหตุ:</strong> การลงนามของผู้บังคับบัญชาตามลำดับชั้นให้ระบุ ชื่อ - สกุล ให้ครบถ้วน
-      </div>
-    </div>
-  `;
+const drawCheckmark = (page, x, y, isChecked, font, size = 12) => {
+  if (isChecked) {
+    page.drawText("✓", { x: x + 2, y: y - 2, size, font, color: rgb(0, 0, 0) });
+  }
 };
 
 /**
- * ฟอร์มทั่วไป (สำหรับประเภทลาอื่นๆ)
+ * เติมข้อมูลลงใน PDF - ฟอร์มลาป่วย/ลากิจ/ลาคลอด
+ * พิกัดเหล่านี้ต้องปรับตามตำแหน่งจริงในฟอร์ม
  */
-const generateGenericForm = (
+const fillSickPersonalMaternityForm = async (
+  page,
+  font,
   leaveData,
   userData,
-  today,
-  startDate,
-  endDate
 ) => {
-  const leaveTypeName =
-    LEAVE_TYPE_NAMES[leaveData.leaveType] || leaveData.leaveType;
-
-  return `
-    <div id="leave-form-pdf" style="
-      width: 210mm;
-      min-height: 297mm;
-      padding: 15mm 20mm;
-      font-family: 'TH Sarabun New', 'Sarabun', sans-serif;
-      font-size: 14px;
-      line-height: 1.5;
-      background: white;
-      color: black;
-    ">
-      ${getHeaderHTML("บันทึกข้อความ", `(หนังสือขออนุญาต${leaveTypeName})`)}
-      ${getDepartmentHTML(userData, today, `ขออนุญาต${leaveTypeName}`)}
-      ${getEmployeeInfoHTML(userData)}
-
-      <div style="margin: 15px 0; font-size: 14px; text-indent: 50px;">
-        มีความประสงค์ขออนุญาต<strong>${leaveTypeName}</strong>
-      </div>
-
-      <div style="margin: 10px 0; font-size: 14px;">
-        <div>เนื่องจาก (เหตุผล) <strong>${
-          leaveData.reason ||
-          "............................................................................................."
-        }</strong></div>
-        <div style="margin-top: 10px;">
-          ตั้งแต่วันที่ <strong>${startDate.day} ${startDate.month} ${
-    startDate.year
-  }</strong>
-          <span style="margin-left: 20px;">ถึงวันที่ <strong>${endDate.day} ${
-    endDate.month
-  } ${endDate.year}</strong></span>
-          <span style="margin-left: 20px;">มีกำหนด <strong>${
-            leaveData.totalDays || "......."
-          }</strong> วัน</span>
-        </div>
-        <div style="margin-top: 10px;">
-          ในระหว่างลา จะติดต่อข้าพเจ้าได้ที่ ............................................................................................
-        </div>
-        <div style="margin-top: 15px; text-indent: 50px;">จึงเรียนมาเพื่อโปรดพิจารณา</div>
-      </div>
-
-      <div style="text-align: right; margin: 30px 0;">
-        <div>ลงชื่อ .............................................</div>
-        <div style="margin-top: 5px;">( ${userData.firstName || ""} ${
-    userData.lastName || ""
-  } )</div>
-      </div>
-
-      ${getSignatureHTML()}
-
-      <div style="margin-top: 20px; font-size: 12px; border-top: 1px solid #ccc; padding-top: 10px;">
-        <strong>หมายเหตุ:</strong> การลงนามของผู้บังคับบัญชาตามลำดับชั้นให้ระบุ ชื่อ - สกุล ให้ครบถ้วน
-      </div>
-    </div>
-  `;
-};
-
-/**
- * สร้าง PDF ใบลาภาษาไทย - เลือก template ตามประเภทการลา
- */
-export const generateLeavePDF = async (leaveData, userData) => {
+  const { height } = page.getSize();
   const startDate = formatThaiDate(leaveData.startDate);
   const endDate = formatThaiDate(leaveData.endDate);
   const today = formatThaiDate(new Date().toISOString());
-  const leaveTypeName =
-    LEAVE_TYPE_NAMES[leaveData.leaveType] || leaveData.leaveType;
 
-  // เลือก template ตามประเภทการลา
-  let htmlContent;
-  switch (leaveData.leaveType) {
-    case "sick":
-    case "personal":
-    case "maternity":
-      htmlContent = generateSickPersonalMaternityForm(
-        leaveData,
-        userData,
-        today,
-        startDate,
-        endDate
-      );
-      break;
-    case "paternity":
-      htmlContent = generatePaternityForm(
-        leaveData,
-        userData,
-        today,
-        startDate,
-        endDate
-      );
-      break;
-    case "vacation":
-      htmlContent = generateVacationForm(
-        leaveData,
-        userData,
-        today,
-        startDate,
-        endDate
-      );
-      break;
-    case "ordination":
-      htmlContent = generateOrdinationForm(
-        leaveData,
-        userData,
-        today,
-        startDate,
-        endDate
-      );
-      break;
-    default:
-      htmlContent = generateGenericForm(
-        leaveData,
-        userData,
-        today,
-        startDate,
-        endDate
-      );
+  const departmentName = getDepartmentName(userData.department);
+  const facultyName = getFacultyName(userData.department);
+  const fullName = `${userData.title || ""} ${userData.firstName || ""} ${
+    userData.lastName || ""
+  }`.trim();
+
+  // === พิกัดสำหรับเติมข้อมูล (จาก Calibration) ===
+  // หมายเหตุ: y นับจากล่างขึ้นบน, x นับจากซ้ายไปขวา
+  // Page size: 595.32 x 841.92 (A4)
+
+  const fontSize = 15; // ปรับให้เล็กลงให้พอดีกับแบบฟอร์ม
+  const smallFont = 15;
+
+  // ส่วนราชการ x=145, y=132
+  drawText(page, departmentName, 140, height - 122, font, fontSize);
+
+  // ที่ (เลขหนังสือ) x=90, y=142
+  drawText(
+    page,
+    userData.documentNumber || "",
+    90,
+    height - 144,
+    font,
+    fontSize,
+  );
+
+  // วันที่ x=225, y=142
+  drawText(page, String(today.day), 265, height - 144, font, fontSize);
+
+  // เดือน x=320, y=142
+  drawText(page, today.month, 320, height - 144, font, fontSize);
+
+  // พ.ศ. x=400, y=142
+  drawText(page, String(today.year), 400, height - 144, font, fontSize);
+
+  // ข้าพเจ้า x=190, y=230
+  drawText(page, fullName, 185, height - 220, font, fontSize);
+
+  // ตำแหน่ง x=395, y=230
+  drawText(
+    page,
+    userData.position || "อาจารย์",
+    395,
+    height - 223,
+    font,
+    fontSize,
+  );
+
+  // สังกัดสาขาวิชา/หน่วยงาน x=185, y=240
+  drawText(page, departmentName, 180, height - 240, font, fontSize);
+
+  // คณะ/สำนัก/สถาบัน x=400, y=240
+  drawText(page, facultyName, 400, height - 240, font, fontSize);
+
+  // Checkbox ประเภทการลา - วาดเครื่องหมายถูกด้วยเส้น
+  const drawCheckmark = (x, y) => {
+    const checkColor = rgb(0, 0, 0);
+    // วาดเส้นเครื่องหมายถูก
+    page.drawLine({
+      start: { x: x, y: y + 3 },
+      end: { x: x + 3, y: y },
+      thickness: 1.5,
+      color: checkColor,
+    });
+    page.drawLine({
+      start: { x: x + 3, y: y },
+      end: { x: x + 8, y: y + 8 },
+      thickness: 1.5,
+      color: checkColor,
+    });
+  };
+
+  if (leaveData.leaveType === "sick") {
+    drawCheckmark(270, height - 275);
+  }
+  if (leaveData.leaveType === "personal") {
+    drawCheckmark(335, height - 275);
+  }
+  if (leaveData.leaveType === "maternity") {
+    drawCheckmark(427, height - 275);
   }
 
-  // สร้าง container ชั่วคราว
-  const container = document.createElement("div");
-  container.innerHTML = htmlContent;
-  container.style.position = "absolute";
-  container.style.left = "-9999px";
-  container.style.top = "-9999px";
-  document.body.appendChild(container);
+  // เนื่องจาก (เหตุผล) x=155, y=292
+  drawText(page, leaveData.reason || "", 155, height - 295, font, fontSize);
+
+  // ตั้งแต่วันที่: วัน x=133, y=312
+  drawText(page, String(startDate.day), 133, height - 312, font, fontSize);
+  // เดือน x=155, y=312
+  drawText(page, startDate.month, 155, height - 312, font, fontSize);
+  // ปี x=215, y=312
+  drawText(page, String(startDate.year), 215, height - 312, font, fontSize);
+
+  // ถึงวันที่: วัน x=243, y=312
+  drawText(page, String(endDate.day), 285, height - 312, font, fontSize);
+  // เดือน x=315, y=312
+  drawText(page, endDate.month, 315, height - 312, font, fontSize);
+  // ปี x=390, y=312
+  drawText(page, String(endDate.year), 390, height - 312, font, fontSize);
+
+  // มีกำหนด x=480, y=312
+  drawText(
+    page,
+    String(leaveData.totalDays),
+    480,
+    height - 312,
+    font,
+    fontSize,
+  );
+
+  // ในระหว่างลาจะติดต่อข้าพเจ้าได้ที่ (เบอร์โทรศัพท์) x=80, y=364
+  drawText(
+    page,
+    leaveData.contactPhone || userData.phone || "",
+    80,
+    height - 367,
+    font,
+    fontSize,
+  );
+
+  // สถิติการลา (ในตาราง)
+  // จากภาพ: ป่วย y≈492, กิจส่วนตัว y≈542
+  const getUsed = (type) => leaveData.leaveStats?.[type]?.used || 0;
+  const getCurrent = (type) =>
+    type === leaveData.leaveType ? leaveData.totalDays : 0;
+
+  // พิกัด X ของแต่ละคอลัมน์ (ลามาแล้ว, ลาครั้งนี้, รวมเป็น)
+  const col1X = 150; // ลามาแล้ว
+  const col2X = 200; // ลาครั้งนี้
+  const col3X = 265; // รวมเป็น
+  const rowSpacing = 32; // ระยะห่างระหว่างแถว
+
+  // ป่วย (แถวแรก) y=500
+  const row1Y = height - 510;
+  drawText(page, String(getUsed("sick") || "-"), col1X, row1Y, font, smallFont);
+  drawText(
+    page,
+    String(getCurrent("sick") || "-"),
+    col2X,
+    row1Y,
+    font,
+    smallFont,
+  );
+  drawText(
+    page,
+    String(getUsed("sick") + getCurrent("sick") || "-"),
+    col3X,
+    row1Y,
+    font,
+    smallFont,
+  );
+
+  // กิจส่วนตัว (แถวที่ 2) y=530
+  const row2Y = row1Y - rowSpacing;
+  drawText(
+    page,
+    String(getUsed("personal") || "-"),
+    col1X,
+    row2Y,
+    font,
+    smallFont,
+  );
+  drawText(
+    page,
+    String(getCurrent("personal") || "-"),
+    col2X,
+    row2Y,
+    font,
+    smallFont,
+  );
+  drawText(
+    page,
+    String(getUsed("personal") + getCurrent("personal") || "-"),
+    col3X,
+    row2Y,
+    font,
+    smallFont,
+  );
+
+  // คลอดบุตร (แถวที่ 3) y=560
+  const row3Y = row2Y - rowSpacing;
+  drawText(
+    page,
+    String(getUsed("maternity") || "-"),
+    col1X,
+    row3Y,
+    font,
+    smallFont,
+  );
+  drawText(
+    page,
+    String(getCurrent("maternity") || "-"),
+    col2X,
+    row3Y,
+    font,
+    smallFont,
+  );
+  drawText(
+    page,
+    String(getUsed("maternity") + getCurrent("maternity") || "-"),
+    col3X,
+    row3Y,
+    font,
+    smallFont,
+  );
+};
+
+/**
+ * เติมข้อมูลลงใน PDF - ฟอร์มลาพักผ่อน
+ */
+const fillVacationForm = async (page, font, leaveData, userData) => {
+  const { height } = page.getSize();
+  const startDate = formatThaiDate(leaveData.startDate);
+  const endDate = formatThaiDate(leaveData.endDate);
+  const today = formatThaiDate(new Date().toISOString());
+
+  const departmentName = getDepartmentName(userData.department);
+  const facultyName = getFacultyName(userData.department);
+  const fullName = `${userData.firstName || ""} ${
+    userData.lastName || ""
+  }`.trim();
+
+  const fontSize = 14;
+
+  // ส่วนราชการ
+  drawText(page, departmentName, 160, height - 96, font, fontSize);
+
+  // ที่
+  drawText(
+    page,
+    userData.documentNumber || "",
+    110,
+    height - 117,
+    font,
+    fontSize,
+  );
+
+  // วันที่
+  drawText(page, String(today.day), 285, height - 117, font, fontSize);
+  drawText(page, today.month, 335, height - 117, font, fontSize);
+  drawText(page, String(today.year), 420, height - 117, font, fontSize);
+
+  // ชื่อ
+  drawText(page, fullName, 200, height - 195, font, fontSize);
+
+  // ตำแหน่ง
+  drawText(
+    page,
+    userData.position || "อาจารย์",
+    420,
+    height - 195,
+    font,
+    fontSize,
+  );
+
+  // สังกัด
+  drawText(page, departmentName, 200, height - 213, font, fontSize);
+
+  // คณะ
+  drawText(page, facultyName, 420, height - 213, font, fontSize);
+
+  // วันที่ลา
+  drawText(
+    page,
+    `${startDate.day} ${startDate.month} ${startDate.year}`,
+    195,
+    height - 250,
+    font,
+    fontSize,
+  );
+  drawText(
+    page,
+    `${endDate.day} ${endDate.month} ${endDate.year}`,
+    345,
+    height - 250,
+    font,
+    fontSize,
+  );
+  drawText(
+    page,
+    String(leaveData.totalDays),
+    505,
+    height - 250,
+    font,
+    fontSize,
+  );
+
+  // === ส่วนที่เพิ่มเติม ===
+
+  // คำนวณวันลาพักผ่อน
+  const vacationStats = leaveData.leaveStats?.vacation || {};
+  const accumulated = vacationStats.accumulated || 0; // วันสะสม
+  const maxDays = vacationStats.maxDays || 10; // สิทธิประจำปี
+  const totalAvailable = accumulated + maxDays; // รวมเป็น
+
+  // วันลาพักผ่อนสะสม (ใส่พิกัดตามที่ต้องการ)
+  drawText(page, String(accumulated), 185, height - 232, font, fontSize);
+
+  // รวมเป็น (สะสม + ประจำปี)
+  drawText(page, String(totalAvailable), 480, height - 232, font, fontSize);
+
+  // ในระหว่างลา จะติดต่อข้าพเจ้าได้ที่ (เบอร์โทรศัพท์)
+  drawText(
+    page,
+    leaveData.contactPhone || userData.phone || "",
+    250,
+    height - 267,
+    font,
+    fontSize,
+  );
+
+  // === สถิติการลาพักผ่อน (ในตาราง) ===
+  // คอลัมน์: ลามาแล้ว, ลาครั้งนี้, รวมเป็น, คงเหลือสะสม
+  const smallFont = 12;
+  const used = vacationStats.used || 0;
+  const currentLeave = leaveData.totalDays || 0;
+  const totalUsed = used + currentLeave;
+  const remaining = totalAvailable - totalUsed;
+
+  // พิกัดคอลัมน์ (ปรับตามตำแหน่งจริงในตาราง)
+  const col1X = 120; // ลามาแล้ว
+  const col2X = 175; // ลาครั้งนี้
+  const col3X = 225; // รวมเป็น
+  const col4X = 287; // คงเหลือสะสม
+  const tableY = height - 408; // แถวข้อมูล (ปรับตามตำแหน่งจริง)
+
+  drawText(page, String(used || "-"), col1X, tableY, font, smallFont);
+  drawText(page, String(currentLeave || "-"), col2X, tableY, font, smallFont);
+  drawText(page, String(totalUsed || "-"), col3X, tableY, font, smallFont);
+  drawText(
+    page,
+    String(remaining >= 0 ? remaining : 0),
+    col4X,
+    tableY,
+    font,
+    smallFont,
+  );
+};
+
+/**
+ * เติมข้อมูลลงใน PDF - ฟอร์มลาช่วยเหลือภริยาที่คลอดบุตร
+ * พิกัดต้องปรับตาม template จริง
+ */
+const fillPaternityForm = async (page, font, leaveData, userData) => {
+  const { height } = page.getSize();
+  const startDate = formatThaiDate(leaveData.startDate);
+  const endDate = formatThaiDate(leaveData.endDate);
+  const today = formatThaiDate(new Date().toISOString());
+
+  const departmentName = getDepartmentName(userData.department);
+  const facultyName = getFacultyName(userData.department);
+  const fullName = `${userData.title || ""} ${userData.firstName || ""} ${
+    userData.lastName || ""
+  }`.trim();
+
+  const fontSize = 14;
+
+  // ส่วนราชการ (ปรับพิกัดตาม template)
+  drawText(page, departmentName, 145, height - 132, font, fontSize);
+
+  // ที่ (เลขหนังสือ)
+  drawText(
+    page,
+    userData.documentNumber || "",
+    90,
+    height - 154,
+    font,
+    fontSize,
+  );
+
+  // วันที่ เดือน พ.ศ.
+  drawText(page, String(today.day), 269, height - 154, font, fontSize);
+  drawText(page, today.month, 320, height - 154, font, fontSize);
+  drawText(page, String(today.year), 400, height - 154, font, fontSize);
+
+  // ข้าพเจ้า (ชื่อ)
+  drawText(page, fullName, 190, height - 230, font, fontSize);
+
+  // ตำแหน่ง
+  drawText(
+    page,
+    userData.position || "อาจารย์",
+    395,
+    height - 230,
+    font,
+    fontSize,
+  );
+
+  // สังกัดสาขาวิชา/หน่วยงาน
+  drawText(page, departmentName, 185, height - 250, font, fontSize);
+
+  // คณะ/สำนัก/สถาบัน
+  drawText(page, facultyName, 400, height - 250, font, fontSize);
+
+  // ตั้งแต่วันที่ (แยก วัน/เดือน/ปี)
+  drawText(page, String(startDate.day), 80, height - 342, font, fontSize);
+  drawText(page, startDate.month, 120, height - 342, font, fontSize);
+  drawText(page, String(startDate.year), 170, height - 342, font, fontSize);
+
+  // ถึงวันที่ (แยก วัน/เดือน/ปี)
+  drawText(page, String(endDate.day), 250, height - 342, font, fontSize);
+  drawText(page, endDate.month, 280, height - 342, font, fontSize);
+  drawText(page, String(endDate.year), 340, height - 342, font, fontSize);
+
+  // มีกำหนด ... วัน
+  drawText(
+    page,
+    String(leaveData.totalDays),
+    426,
+    height - 342,
+    font,
+    fontSize,
+  );
+
+  // ในระหว่างลาจะติดต่อข้าพเจ้าได้ที่ (เบอร์โทรศัพท์)
+  drawText(page, userData.phone || "", 240, height - 359, font, fontSize);
+
+  // === สถิติการลา (ในตาราง) ===
+  // คอลัมน์: ลามาแล้ว, ลาครั้งนี้, รวมเป็น
+  const smallFont = 14;
+  const paternityStats = leaveData.leaveStats?.paternity || {};
+  const used = paternityStats.used || 0;
+  const currentLeave = leaveData.totalDays || 0;
+  const totalUsed = used + currentLeave;
+
+  // พิกัดคอลัมน์ (ปรับตามตำแหน่งจริงในตาราง - ดูจากภาพ y≈492-542)
+  const col1X = 150; // ลามาแล้ว
+  const col2X = 205; // ลาครั้งนี้
+  const col3X = 263; // รวมเป็น
+  const tableY = height - 522; // แถวข้อมูล (ปรับตามตำแหน่งจริง)
+
+  drawText(page, String(used || "-"), col1X, tableY, font, smallFont);
+  drawText(page, String(currentLeave || "-"), col2X, tableY, font, smallFont);
+  drawText(page, String(totalUsed || "-"), col3X, tableY, font, smallFont);
+};
+
+/**
+ * สร้าง PDF ใบลาจาก Template
+ */
+export const generateLeavePDF = async (leaveData, userData) => {
+  const leaveTypeName =
+    LEAVE_TYPE_NAMES[leaveData.leaveType] || leaveData.leaveType;
+  const templateFileName =
+    TEMPLATE_FILES[leaveData.leaveType] || TEMPLATE_FILES.sick;
 
   try {
-    const element = container.querySelector("#leave-form-pdf");
+    // โหลด PDF template
+    const templateUrl = `/forms/${encodeURIComponent(templateFileName)}`;
+    console.log("Loading template:", templateUrl);
 
-    // แปลง HTML เป็น canvas
-    const canvas = await html2canvas(element, {
-      scale: 2,
-      useCORS: true,
-      backgroundColor: "#ffffff",
+    const templateResponse = await fetch(templateUrl);
+
+    if (!templateResponse.ok) {
+      throw new Error(`Template not found: ${templateFileName}`);
+    }
+
+    const templateBytes = await templateResponse.arrayBuffer();
+    const pdfDoc = await PDFDocument.load(templateBytes);
+
+    // โหลด font
+    const font = await loadThaiFont(pdfDoc);
+
+    // รับหน้าแรก
+    const pages = pdfDoc.getPages();
+    const page = pages[0];
+
+    console.log("Page size:", page.getSize());
+
+    // วาด grid สำหรับ calibration (เปลี่ยน CALIBRATION_MODE = true เพื่อเปิดใช้งาน)
+    drawCalibrationGrid(page, font);
+
+    // เติมข้อมูลตามประเภทการลา
+    switch (leaveData.leaveType) {
+      case "sick":
+      case "personal":
+      case "maternity":
+        await fillSickPersonalMaternityForm(page, font, leaveData, userData);
+        break;
+      case "vacation":
+        await fillVacationForm(page, font, leaveData, userData);
+        break;
+      case "paternity":
+        await fillPaternityForm(page, font, leaveData, userData);
+        break;
+      default:
+        await fillSickPersonalMaternityForm(page, font, leaveData, userData);
+    }
+
+    // บันทึก PDF
+    const pdfBytes = await pdfDoc.save();
+
+    // สร้าง Blob และดาวน์โหลด
+    const blob = new Blob([pdfBytes], { type: "application/pdf" });
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `ใบลา_${leaveTypeName}_${userData.firstName}_${userData.lastName}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    console.log("PDF generated successfully!");
+    return true;
+  } catch (error) {
+    console.error("Error generating PDF:", error);
+    alert(`เกิดข้อผิดพลาดในการสร้าง PDF: ${error.message}`);
+    return false;
+  }
+};
+
+/**
+ * Preview Leave PDF - เปิด PDF ในแท็บใหม่ (สำหรับ Admin)
+ */
+export const previewLeavePDF = async (leaveData, userData) => {
+  try {
+    console.log("Preview Leave PDF:", { leaveData, userData });
+
+    const leaveType = leaveData.leaveType;
+    const templateFile = TEMPLATE_FILES[leaveType];
+
+    if (!templateFile) {
+      alert(
+        `ยังไม่รองรับการแสดงตัวอย่างใบลาประเภท: ${LEAVE_TYPE_NAMES[leaveType] || leaveType}`,
+      );
+      return false;
+    }
+
+    // โหลด template PDF
+    const templatePath = `/forms/${templateFile}`;
+    const existingPdfBytes = await fetch(templatePath).then((res) => {
+      if (!res.ok) throw new Error(`ไม่พบไฟล์ template: ${templatePath}`);
+      return res.arrayBuffer();
     });
 
-    // สร้าง PDF
-    const pdf = new jsPDF({
-      orientation: "portrait",
-      unit: "mm",
-      format: "a4",
-    });
+    const pdfDoc = await PDFDocument.load(existingPdfBytes);
+    const font = await loadThaiFont(pdfDoc);
+    const pages = pdfDoc.getPages();
+    const page = pages[0];
 
-    const imgData = canvas.toDataURL("image/png");
-    const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pdfHeight = pdf.internal.pageSize.getHeight();
+    // เติมข้อมูลตามประเภทการลา
+    switch (leaveData.leaveType) {
+      case "sick":
+      case "personal":
+      case "maternity":
+        await fillSickPersonalMaternityForm(page, font, leaveData, userData);
+        break;
+      case "vacation":
+        await fillVacationForm(page, font, leaveData, userData);
+        break;
+      case "paternity":
+        await fillPaternityForm(page, font, leaveData, userData);
+        break;
+      default:
+        await fillSickPersonalMaternityForm(page, font, leaveData, userData);
+    }
 
-    pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+    // บันทึก PDF
+    const pdfBytes = await pdfDoc.save();
 
-    // บันทึกไฟล์
-    const fileName = `ใบลา_${leaveTypeName}_${
-      userData.firstName || ""
-    }_${new Date().getTime()}.pdf`;
-    pdf.save(fileName);
+    // สร้าง Blob และเปิดในแท็บใหม่
+    const blob = new Blob([pdfBytes], { type: "application/pdf" });
+    const url = URL.createObjectURL(blob);
 
-    return fileName;
-  } finally {
-    // ลบ container
-    document.body.removeChild(container);
+    // เปิดในแท็บใหม่
+    window.open(url, "_blank");
+
+    console.log("PDF preview opened successfully!");
+    return true;
+  } catch (error) {
+    console.error("Error previewing PDF:", error);
+    alert(`เกิดข้อผิดพลาดในการแสดงตัวอย่าง PDF: ${error.message}`);
+    return false;
   }
 };
 

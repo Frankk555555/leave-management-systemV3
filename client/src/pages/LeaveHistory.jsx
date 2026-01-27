@@ -4,7 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import { useToast } from "../components/common/Toast";
 import Navbar from "../components/common/Navbar";
 import Loading from "../components/common/Loading";
-import generateLeavePDF from "../utils/generateLeavePDF";
+import generateLeavePDF, { previewLeavePDF } from "../utils/generateLeavePDF";
 import config from "../config";
 import "./LeaveHistory.css";
 
@@ -21,6 +21,7 @@ import {
   FaMedal,
   FaPaperclip,
   FaFilePdf,
+  FaEye,
 } from "react-icons/fa";
 
 const LeaveHistory = () => {
@@ -35,14 +36,72 @@ const LeaveHistory = () => {
 
   // ดาวน์โหลดใบลา PDF
   const handleDownloadPDF = async (request) => {
+    // คำนวณสถิติการลาก่อนหน้า (confirmed leaves only)
+    const confirmedRequests = requests.filter(
+      (r) => r.status === "confirmed" && r.id !== request.id,
+    );
+
+    const leaveStats = {
+      sick: { used: 0 },
+      personal: { used: 0 },
+      vacation: { used: 0 },
+      maternity: { used: 0 },
+      paternity: { used: 0 },
+      childcare: { used: 0 },
+      ordination: { used: 0 },
+      military: { used: 0 },
+    };
+
+    // รวมจำนวนวันลาที่ผ่านมา
+    confirmedRequests.forEach((r) => {
+      if (leaveStats[r.leaveType]) {
+        leaveStats[r.leaveType].used += r.totalDays || 0;
+      }
+    });
+
     const leaveData = {
       leaveType: request.leaveType,
       startDate: request.startDate,
       endDate: request.endDate,
       reason: request.reason,
       totalDays: request.totalDays,
+      leaveStats: leaveStats,
     };
     await generateLeavePDF(leaveData, user);
+  };
+
+  // ดูตัวอย่างใบลา PDF (เปิดแท็บใหม่)
+  const handlePreviewPDF = async (request) => {
+    const confirmedRequests = requests.filter(
+      (r) => r.status === "confirmed" && r.id !== request.id,
+    );
+
+    const leaveStats = {
+      sick: { used: 0 },
+      personal: { used: 0 },
+      vacation: { used: 0 },
+      maternity: { used: 0 },
+      paternity: { used: 0 },
+      childcare: { used: 0 },
+      ordination: { used: 0 },
+      military: { used: 0 },
+    };
+
+    confirmedRequests.forEach((r) => {
+      if (leaveStats[r.leaveType]) {
+        leaveStats[r.leaveType].used += r.totalDays || 0;
+      }
+    });
+
+    const leaveData = {
+      leaveType: request.leaveType,
+      startDate: request.startDate,
+      endDate: request.endDate,
+      reason: request.reason,
+      totalDays: request.totalDays,
+      leaveStats: leaveStats,
+    };
+    await previewLeavePDF(leaveData, user);
   };
 
   const fetchRequests = async () => {
@@ -150,7 +209,14 @@ const LeaveHistory = () => {
                       {getLeaveTypeName(request.leaveType)}
                     </span>
                   </div>
-                  <div className="days-badge">{request.totalDays} วัน</div>
+                  <div className="header-badges">
+                    <div className="days-badge">{request.totalDays} วัน</div>
+                    <span className={`status-badge ${request.status}`}>
+                      {request.status === "confirmed"
+                        ? "✓ ลงข้อมูลแล้ว"
+                        : "รอดำเนินการ"}
+                    </span>
+                  </div>
                 </div>
 
                 <div className="card-body">
@@ -219,13 +285,22 @@ const LeaveHistory = () => {
                     <span className="created-date">
                       ยื่นเมื่อ {formatDate(request.createdAt)}
                     </span>
-                    <button
-                      className="pdf-btn-leave"
-                      onClick={() => handleDownloadPDF(request)}
-                      title="ดาวน์โหลดใบลา PDF"
-                    >
-                      <FaFilePdf /> ใบลา
-                    </button>
+                    <div className="footer-buttons">
+                      <button
+                        className="preview-btn-form"
+                        onClick={() => handlePreviewPDF(request)}
+                        title="ดูใบลา"
+                      >
+                        <FaEye /> ดูใบลา
+                      </button>
+                      <button
+                        className="pdf-btn-leave"
+                        onClick={() => handleDownloadPDF(request)}
+                        title="ดาวน์โหลดใบลา PDF"
+                      >
+                        <FaFilePdf /> ดาวน์โหลด
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>

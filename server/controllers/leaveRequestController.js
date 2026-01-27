@@ -4,6 +4,8 @@ const {
   LeaveBalance,
   LeaveAttachment,
   Department,
+  Faculty,
+  Notification,
 } = require("../models");
 const { Op } = require("sequelize");
 const {
@@ -73,7 +75,7 @@ const createLeaveRequest = async (req, res) => {
           filePath: "/" + file.path.replace(/\\/g, "/"),
           fileType: file.mimetype,
           fileSize: file.size,
-        })
+        }),
       );
       await Promise.all(attachmentPromises);
     }
@@ -89,6 +91,24 @@ const createLeaveRequest = async (req, res) => {
         { model: LeaveAttachment, as: "attachments" },
       ],
     });
+
+    // Notify all admins about new leave request
+    try {
+      const admins = await User.findAll({ where: { role: "admin" } });
+      const leaveTypeName = getLeaveTypeName(leaveType);
+      const notificationPromises = admins.map((admin) =>
+        Notification.create({
+          userId: admin.id,
+          type: "new_leave",
+          title: "มีใบลาใหม่",
+          message: `${req.user.firstName} ${req.user.lastName} ยื่นใบ${leaveTypeName} ${validation.totalDays} วัน`,
+          relatedLeaveId: leaveRequest.id,
+        }),
+      );
+      await Promise.all(notificationPromises);
+    } catch (notifyError) {
+      console.error("Error notifying admins:", notifyError);
+    }
 
     res.status(201).json(createdRequest);
   } catch (error) {
@@ -141,12 +161,23 @@ const getAllLeaveRequests = async (req, res) => {
             "lastName",
             "email",
             "position",
+            "unit",
+            "affiliation",
+            "phone",
+            "documentNumber",
           ],
           include: [
             {
               model: Department,
               as: "department",
               attributes: ["id", "name"],
+              include: [
+                {
+                  model: Faculty,
+                  as: "faculty",
+                  attributes: ["id", "name"],
+                },
+              ],
             },
           ],
         },
@@ -381,6 +412,107 @@ const getTeamLeaveRequests = async (req, res) => {
   }
 };
 
+// @desc    Confirm leave request (admin marks as processed in university system)
+// @route   PUT /api/leave-requests/:id/confirm
+// @access  Private/Admin
+const confirmLeaveRequest = async (req, res) => {
+  try {
+    const { note } = req.body;
+    const leaveRequest = await LeaveRequest.findByPk(req.params.id, {
+      include: [
+        {
+          model: User,
+          as: "user",
+          attributes: ["id", "firstName", "lastName"],
+        },
+      ],
+    });
+
+    if (!leaveRequest) {
+      return res.status(404).json({ message: "ไม่พบใบลา" });
+    }
+
+    if (leaveRequest.status === "confirmed") {
+      return res.status(400).json({ message: "ใบลานี้ถูกยืนยันแล้ว" });
+    }
+
+    // Update status to confirmed
+    await leaveRequest.update({
+      status: "confirmed",
+      confirmedBy: req.user.id,
+      confirmedAt: new Date(),
+      confirmedNote: note || null,
+    });
+
+    // Deduct leave balance from user
+    try {
+      const userBalance = await LeaveBalance.findOne({
+        where: { userId: leaveRequest.userId },
+      });
+
+      if (userBalance) {
+        const leaveType = leaveRequest.leaveType;
+        const totalDays = leaveRequest.totalDays;
+
+        // Handle vacation specially (has accrued and current year)
+        if (leaveType === "vacation") {
+          // First deduct from current year, then from accrued
+          let remaining = totalDays;
+          const currentYear = userBalance.vacationCurrentYear || 0;
+          const accrued = userBalance.vacationAccrued || 0;
+
+          if (remaining <= currentYear) {
+            await userBalance.update({
+              vacationCurrentYear: currentYear - remaining,
+              vacation: currentYear - remaining + accrued,
+            });
+          } else {
+            // Deduct all current year first, then from accrued
+            const fromAccrued = remaining - currentYear;
+            await userBalance.update({
+              vacationCurrentYear: 0,
+              vacationAccrued: Math.max(0, accrued - fromAccrued),
+              vacation: Math.max(0, accrued - fromAccrued),
+            });
+          }
+        } else if (userBalance[leaveType] !== undefined) {
+          // For other leave types, just deduct directly
+          const currentBalance = userBalance[leaveType] || 0;
+          await userBalance.update({
+            [leaveType]: Math.max(0, currentBalance - totalDays),
+          });
+        }
+
+        console.log(
+          `Deducted ${totalDays} days of ${leaveType} from user ${leaveRequest.userId}`,
+        );
+      }
+    } catch (balanceError) {
+      console.error("Error deducting leave balance:", balanceError);
+      // Don't fail the whole request, just log the error
+    }
+
+    // Send notification to the user
+    const leaveTypeName = getLeaveTypeName(leaveRequest.leaveType);
+    await Notification.create({
+      userId: leaveRequest.userId,
+      type: "confirmation",
+      title: "ใบลาถูกลงข้อมูลแล้ว",
+      message: `ใบ${leaveTypeName}ของคุณ (${
+        leaveRequest.totalDays
+      } วัน) ถูกลงข้อมูลในระบบมหาวิทยาลัยเรียบร้อยแล้ว${
+        note ? " หมายเหตุ: " + note : ""
+      }`,
+      relatedLeaveId: leaveRequest.id,
+    });
+
+    res.json({ message: "ยืนยันการลงข้อมูลเรียบร้อยแล้ว", leaveRequest });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
 module.exports = {
   createLeaveRequest,
   getMyLeaveRequests,
@@ -389,4 +521,5 @@ module.exports = {
   cancelLeaveRequest,
   updateLeaveRequest,
   getTeamLeaveRequests,
+  confirmLeaveRequest,
 };

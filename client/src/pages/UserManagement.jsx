@@ -16,6 +16,11 @@ import {
   FaDownload,
   FaCheckCircle,
   FaTimesCircle,
+  FaBaby,
+  FaUserFriends,
+  FaChild,
+  FaPray,
+  FaMedal,
 } from "react-icons/fa";
 import "./UserManagement.css";
 
@@ -51,7 +56,12 @@ const UserManagement = () => {
     position: "",
     role: "employee",
     supervisorId: "",
+    supervisorId: "",
     startDate: "",
+    governmentDivision: "",
+    documentNumber: "",
+    unit: "",
+    affiliation: "",
     leaveBalance: {
       sick: 60,
       personal: 45,
@@ -157,7 +167,12 @@ const UserManagement = () => {
         position: user.position || "",
         role: user.role,
         supervisorId: user.supervisorId || user.supervisor?.id || "",
+        supervisorId: user.supervisorId || user.supervisor?.id || "",
         startDate: user.startDate ? user.startDate.split("T")[0] : "",
+        governmentDivision: user.governmentDivision || "",
+        documentNumber: user.documentNumber || "",
+        unit: user.unit || "",
+        affiliation: user.affiliation || "",
         leaveBalance: user.leaveBalance || {
           sick: 60,
           personal: 45,
@@ -181,7 +196,12 @@ const UserManagement = () => {
         position: "",
         role: "employee",
         supervisorId: "",
+        supervisorId: "",
         startDate: "",
+        governmentDivision: "",
+        documentNumber: "",
+        unit: "",
+        affiliation: "",
         leaveBalance: {
           sick: 60,
           personal: 45,
@@ -479,7 +499,7 @@ const UserManagement = () => {
 
                 <div className="form-row">
                   <div className="form-group">
-                    <label>ชื่อ</label>
+                    <label>ชื่อ (โปรดระบุคำนำหน้า)</label>
                     <input
                       type="text"
                       name="firstName"
@@ -567,6 +587,27 @@ const UserManagement = () => {
 
                 <div className="form-row">
                   <div className="form-group">
+                    <label>ส่วนราชการ</label>
+                    <input
+                      type="text"
+                      name="governmentDivision"
+                      value={formData.governmentDivision}
+                      onChange={handleChange}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>ที่ (เลขหนังสือ)</label>
+                    <input
+                      type="text"
+                      name="documentNumber"
+                      value={formData.documentNumber}
+                      onChange={handleChange}
+                    />
+                  </div>
+                </div>
+
+                <div className="form-row">
+                  <div className="form-group">
                     <label>บทบาท</label>
                     <select
                       name="role"
@@ -615,7 +656,9 @@ const UserManagement = () => {
                 <div className="form-section-title">วันลาคงเหลือ</div>
                 <div className="form-row three-cols">
                   <div className="form-group">
-                    <label>🏥 ลาป่วย</label>
+                    <label>
+                      <FaHospital style={{ marginRight: "6px" }} /> ลาป่วย
+                    </label>
                     <input
                       type="number"
                       name="leaveBalance.sick"
@@ -625,7 +668,9 @@ const UserManagement = () => {
                     />
                   </div>
                   <div className="form-group">
-                    <label>📋 ลากิจ</label>
+                    <label>
+                      <FaClipboardList style={{ marginRight: "6px" }} /> ลากิจ
+                    </label>
                     <input
                       type="number"
                       name="leaveBalance.personal"
@@ -635,11 +680,79 @@ const UserManagement = () => {
                     />
                   </div>
                   <div className="form-group">
-                    <label>🏖️ ลาพักร้อน</label>
+                    <label>
+                      <FaUmbrellaBeach style={{ marginRight: "6px" }} />{" "}
+                      ลาพักร้อน
+                    </label>
                     <input
                       type="number"
                       name="leaveBalance.vacation"
                       value={formData.leaveBalance.vacation}
+                      onChange={handleChange}
+                      min={0}
+                    />
+                  </div>
+                </div>
+                <div className="form-row three-cols">
+                  <div className="form-group">
+                    <label>
+                      <FaBaby style={{ marginRight: "6px" }} /> ลาคลอดบุตร
+                    </label>
+                    <input
+                      type="number"
+                      name="leaveBalance.maternity"
+                      value={formData.leaveBalance.maternity}
+                      onChange={handleChange}
+                      min={0}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>
+                      <FaUserFriends style={{ marginRight: "6px" }} />{" "}
+                      ลาช่วยภรรยาคลอด
+                    </label>
+                    <input
+                      type="number"
+                      name="leaveBalance.paternity"
+                      value={formData.leaveBalance.paternity}
+                      onChange={handleChange}
+                      min={0}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>
+                      <FaChild style={{ marginRight: "6px" }} /> ลาเลี้ยงดูบุตร
+                    </label>
+                    <input
+                      type="number"
+                      name="leaveBalance.childcare"
+                      value={formData.leaveBalance.childcare}
+                      onChange={handleChange}
+                      min={0}
+                    />
+                  </div>
+                </div>
+                <div className="form-row three-cols">
+                  <div className="form-group">
+                    <label>
+                      <FaPray style={{ marginRight: "6px" }} /> ลาอุปสมบท
+                    </label>
+                    <input
+                      type="number"
+                      name="leaveBalance.ordination"
+                      value={formData.leaveBalance.ordination}
+                      onChange={handleChange}
+                      min={0}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>
+                      <FaMedal style={{ marginRight: "6px" }} /> ลาตรวจเลือก
+                    </label>
+                    <input
+                      type="number"
+                      name="leaveBalance.military"
+                      value={formData.leaveBalance.military}
                       onChange={handleChange}
                       min={0}
                     />

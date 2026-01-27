@@ -1,5 +1,11 @@
 const jwt = require("jsonwebtoken");
-const { User, LeaveBalance, LeaveType, Department } = require("../models");
+const {
+  User,
+  LeaveBalance,
+  LeaveType,
+  Department,
+  Faculty,
+} = require("../models");
 const { Op } = require("sequelize");
 
 // Generate JWT - Reduced expiry for better security
@@ -48,10 +54,17 @@ const login = async (req, res) => {
         firstName: user.firstName,
         lastName: user.lastName,
         email: user.email,
+        phone: user.phone,
         department: user.department,
         position: user.position,
         role: user.role,
         leaveBalance: user.leaveBalance,
+        governmentDivision: user.governmentDivision,
+        documentNumber: user.documentNumber,
+        unit: user.unit,
+        affiliation: user.affiliation,
+        startDate: user.startDate,
+        profileImage: user.profileImage,
         token: generateToken(user.id),
       });
     } else {
@@ -83,6 +96,12 @@ const getMe = async (req, res) => {
         {
           model: Department,
           as: "department",
+          include: [
+            {
+              model: Faculty,
+              as: "faculty",
+            },
+          ],
         },
       ],
     });

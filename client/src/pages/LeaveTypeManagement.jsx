@@ -186,7 +186,7 @@ const LeaveTypeManagement = () => {
         <div className="page-header">
           <div>
             <h1>จัดการประเภทการลา</h1>
-            <p>กำหนดประเภทและจำนวนวันลา</p>
+            <p>กำหนดประเภทและจำนวนวันลาตามระเบียบราชการ</p>
           </div>
           <div className="header-actions">
             <button className="init-btn" onClick={handleInitialize}>
@@ -201,6 +201,20 @@ const LeaveTypeManagement = () => {
               {resetting ? "กำลังรีเซ็ต..." : "รีเซ็ตวันลาบุคลากร"}
             </button>
           </div>
+        </div>
+
+        {/* คำแนะนำการใช้งาน */}
+        <div className="info-guide">
+          <ul>
+            <li>
+              <strong>ปุ่ม "รีเซ็ตเป็นค่าเริ่มต้น":</strong>{" "}
+              คืนค่าประเภทการลาทั้งหมดกลับเป็นค่า default ตามระเบียบราชการ
+            </li>
+            <li>
+              <strong>ปุ่ม "รีเซ็ตวันลาบุคลากร":</strong>{" "}
+              ล้างสถิติการลาของพนักงานทุกคน (ใช้ตอนขึ้นปีงบประมาณใหม่)
+            </li>
+          </ul>
         </div>
 
         {leaveTypes.length === 0 ? (

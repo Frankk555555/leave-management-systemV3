@@ -91,6 +91,7 @@ app.use("/api/reports", require("./routes/reports"));
 app.use("/api/webhooks", require("./routes/webhooks"));
 app.use("/api/departments", require("./routes/departments"));
 app.use("/api/faculties", require("./routes/faculties"));
+app.use("/api/forms", require("./routes/forms"));
 
 // Health check
 app.get("/api/health", (req, res) => {

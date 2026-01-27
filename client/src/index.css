@@ -5,6 +5,14 @@
   box-sizing: border-box;
 }
 
+/* Ensure all buttons and inputs inherit font */
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+}
+
 html {
   font-size: 16px;
 }

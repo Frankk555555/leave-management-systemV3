@@ -4,6 +4,36 @@
   margin: 0 auto;
 }
 
+/* Page Header */
+.leave-type-management-page .page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.leave-type-management-page .page-header h1 {
+  margin: 0 0 0.25rem 0;
+  font-size: 1.75rem;
+  color: #1e293b;
+  font-weight: 700;
+}
+
+.leave-type-management-page .page-header p {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.95rem;
+}
+
+/* Header Actions - ปุ่มด้านขวา */
+.leave-type-management-page .header-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
 .leave-types-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -153,31 +183,56 @@
   cursor: not-allowed;
 }
 
-/* Reset Leave Button */
+/* Init Button - รีเซ็ตเป็นค่าเริ่มต้น */
+.leave-type-management-page .init-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 1.25rem;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+}
+
+.leave-type-management-page .init-btn:hover {
+  background: linear-gradient(135deg, #5a6fd6, #6a4093);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+
+/* Reset Leave Button - รีเซ็ตวันลาบุคลากร */
 .reset-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   padding: 0.75rem 1.25rem;
-  background: linear-gradient(135deg, #f56565, #c53030);
+  background: linear-gradient(135deg, #f59e0b, #d97706);
   color: white;
   border: none;
   border-radius: 12px;
   font-size: 0.9rem;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
 }
 
 .reset-btn:hover:not(:disabled) {
-  background: linear-gradient(135deg, #e53e3e, #9b2c2c);
+  background: linear-gradient(135deg, #d97706, #b45309);
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(245, 101, 101, 0.3);
+  box-shadow: 0 6px 20px rgba(245, 158, 11, 0.4);
 }
 
 .reset-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+  transform: none;
 }
 
 /* ==========================================
@@ -252,4 +307,34 @@
     padding: 0.65rem 1rem;
     font-size: 0.85rem;
   }
+}
+
+/* คำแนะนำการใช้งาน */
+.info-guide {
+  background: linear-gradient(135deg, #f0f9ff 0%, #faf5ff 100%);
+  border: 1px solid #bae6fd;
+  border-radius: 16px;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+
+.info-guide ul {
+  margin: 0;
+  padding-left: 1.25rem;
+  display: block;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 0.5rem 2rem;
+}
+
+.info-guide li {
+  margin-bottom: 0.25rem;
+  font-size: 0.875rem;
+  color: #475569;
+  line-height: 1.6;
+}
+
+.info-guide strong {
+  color: #0c4a6e;
 }

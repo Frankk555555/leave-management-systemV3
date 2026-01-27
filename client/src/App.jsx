@@ -20,6 +20,9 @@ const HolidayManagement = lazy(() => import("./pages/HolidayManagement"));
 const LeaveTypeManagement = lazy(() => import("./pages/LeaveTypeManagement"));
 const Reports = lazy(() => import("./pages/Reports"));
 const Profile = lazy(() => import("./pages/Profile"));
+const LeaveForms = lazy(() => import("./pages/LeaveForms"));
+const LeaveManagement = lazy(() => import("./pages/LeaveManagement"));
+const LeaveRegulations = lazy(() => import("./pages/LeaveRegulations"));
 
 function App() {
   return (
@@ -116,6 +119,33 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <Profile />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/forms"
+                element={
+                  <ProtectedRoute>
+                    <LeaveForms />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/admin/leaves"
+                element={
+                  <ProtectedRoute adminOnly>
+                    <LeaveManagement />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/regulations"
+                element={
+                  <ProtectedRoute>
+                    <LeaveRegulations />
                   </ProtectedRoute>
                 }
               />
