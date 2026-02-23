@@ -3,6 +3,7 @@ import Calendar from "react-calendar";
 import { leaveRequestsAPI, holidaysAPI } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import Loading from "../components/common/Loading";
+import { getLeaveTypeCode } from "../utils/leaveTypeUtils";
 import {
   FaBriefcaseMedical,
   FaClipboardList,
@@ -88,6 +89,7 @@ const TeamCalendar = () => {
   };
 
   const getLeaveTypeIcon = (type) => {
+    const code = getLeaveTypeCode(type);
     const icons = {
       sick: <FaBriefcaseMedical className="icon-sick" />,
       personal: <FaClipboardList className="icon-personal" />,
@@ -98,10 +100,11 @@ const TeamCalendar = () => {
       ordination: <FaPray className="icon-ordination" />,
       military: <FaMedal className="icon-military" />,
     };
-    return icons[type] || <FaFileAlt />;
+    return icons[code] || <FaFileAlt />;
   };
 
   const getLeaveTypeName = (type) => {
+    const code = getLeaveTypeCode(type);
     const types = {
       sick: "ลาป่วย",
       personal: "ลากิจส่วนตัว",
@@ -112,7 +115,7 @@ const TeamCalendar = () => {
       ordination: "ลาอุปสมบท/ฮัจย์",
       military: "ลาตรวจเลือก/เตรียมพล",
     };
-    return types[type] || type;
+    return types[code] || (typeof type === "object" ? type.name : type) || code;
   };
 
   const selectedDateLeaves = getTeamLeavesForDate(date);

@@ -1,5 +1,5 @@
 // ============================================
-// Model Associations (Sequelize)
+// Model Associations (Sequelize) - V2
 // Define all relationships between models
 // ============================================
 
@@ -12,11 +12,11 @@ const LeaveAttachment = require("./LeaveAttachment");
 const Holiday = require("./Holiday");
 const LeaveType = require("./LeaveType");
 const Notification = require("./Notification");
+const LeaveHistory = require("./LeaveHistory");
 
 // ========================================
 // Faculty - Department Associations
 // ========================================
-// Department belongs to Faculty
 Department.belongsTo(Faculty, {
   foreignKey: "facultyId",
   as: "faculty",
@@ -41,17 +41,6 @@ Department.hasMany(User, {
   as: "employees",
 });
 
-// User has one LeaveBalance
-User.hasOne(LeaveBalance, {
-  foreignKey: "userId",
-  as: "leaveBalance",
-});
-
-LeaveBalance.belongsTo(User, {
-  foreignKey: "userId",
-  as: "user",
-});
-
 // Self-referential: User has supervisor (also a User)
 User.belongsTo(User, {
   foreignKey: "supervisorId",
@@ -61,6 +50,31 @@ User.belongsTo(User, {
 User.hasMany(User, {
   foreignKey: "supervisorId",
   as: "subordinates",
+});
+
+// ========================================
+// LeaveType - LeaveBalance Associations (NEW)
+// ========================================
+// User has many LeaveBalances (1 per leave_type per year)
+User.hasMany(LeaveBalance, {
+  foreignKey: "userId",
+  as: "leaveBalances",
+});
+
+LeaveBalance.belongsTo(User, {
+  foreignKey: "userId",
+  as: "user",
+});
+
+// LeaveBalance belongs to LeaveType
+LeaveBalance.belongsTo(LeaveType, {
+  foreignKey: "leaveTypeId",
+  as: "leaveType",
+});
+
+LeaveType.hasMany(LeaveBalance, {
+  foreignKey: "leaveTypeId",
+  as: "balances",
 });
 
 // ========================================
@@ -77,6 +91,17 @@ User.hasMany(LeaveRequest, {
   as: "leaveRequests",
 });
 
+// LeaveRequest belongs to LeaveType (NEW - replaces VARCHAR)
+LeaveRequest.belongsTo(LeaveType, {
+  foreignKey: "leaveTypeId",
+  as: "leaveType",
+});
+
+LeaveType.hasMany(LeaveRequest, {
+  foreignKey: "leaveTypeId",
+  as: "leaveRequests",
+});
+
 // LeaveRequest belongs to Approver (User)
 LeaveRequest.belongsTo(User, {
   foreignKey: "approvedBy",
@@ -86,6 +111,12 @@ LeaveRequest.belongsTo(User, {
 User.hasMany(LeaveRequest, {
   foreignKey: "approvedBy",
   as: "approvedRequests",
+});
+
+// LeaveRequest belongs to Confirmer (User)
+LeaveRequest.belongsTo(User, {
+  foreignKey: "confirmedBy",
+  as: "confirmer",
 });
 
 // LeaveRequest has many Attachments
@@ -100,9 +131,31 @@ LeaveAttachment.belongsTo(LeaveRequest, {
 });
 
 // ========================================
+// LeaveHistory Associations (NEW)
+// ========================================
+LeaveRequest.hasMany(LeaveHistory, {
+  foreignKey: "leaveRequestId",
+  as: "history",
+});
+
+LeaveHistory.belongsTo(LeaveRequest, {
+  foreignKey: "leaveRequestId",
+  as: "leaveRequest",
+});
+
+LeaveHistory.belongsTo(User, {
+  foreignKey: "actionBy",
+  as: "actor",
+});
+
+User.hasMany(LeaveHistory, {
+  foreignKey: "actionBy",
+  as: "actions",
+});
+
+// ========================================
 // Notification Associations
 // ========================================
-// Notification belongs to User
 Notification.belongsTo(User, {
   foreignKey: "userId",
   as: "user",
@@ -134,4 +187,5 @@ module.exports = {
   Holiday,
   LeaveType,
   Notification,
+  LeaveHistory,
 };

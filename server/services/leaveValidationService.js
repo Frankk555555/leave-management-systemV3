@@ -1,4 +1,10 @@
-const { Holiday, LeaveRequest, User, LeaveBalance } = require("../models");
+const {
+  Holiday,
+  LeaveRequest,
+  User,
+  LeaveBalance,
+  LeaveType,
+} = require("../models");
 const { Op } = require("sequelize");
 
 // รายชื่อประเภทการลาที่นับเฉพาะวันทำการ (ไม่รวมวันหยุด)
@@ -76,19 +82,31 @@ const calculateTotalDays = (startDate, endDate) => {
 };
 
 /**
+ * Helper: ดึง LeaveBalance ของ user สำหรับ leaveTypeId + ปีปัจจุบัน
+ */
+const getUserLeaveBalance = async (userId, leaveTypeId) => {
+  const currentYear = new Date().getFullYear();
+  const balance = await LeaveBalance.findOne({
+    where: {
+      userId,
+      leaveTypeId,
+      year: currentYear,
+    },
+  });
+  return balance;
+};
+
+/**
+ * Helper: ดึง LeaveType จาก code
+ */
+const getLeaveTypeByCode = async (code) => {
+  return await LeaveType.findOne({ where: { code, isActive: true } });
+};
+
+/**
  * ตรวจสอบเงื่อนไขการลาคลอดบุตร
  */
-const validateMaternityLeave = async (userId, totalDays) => {
-  const user = await User.findByPk(userId, {
-    include: [{ model: LeaveBalance, as: "leaveBalance" }],
-  });
-
-  if (!user) {
-    return { valid: false, message: "ไม่พบข้อมูลผู้ใช้" };
-  }
-
-  // Note: specialLeaveUsed ไม่มีใน Sequelize model ปัจจุบัน
-  // สมมติว่าสามารถลาได้
+const validateMaternityLeave = async (userId, leaveTypeId, totalDays) => {
   if (totalDays > 90) {
     return { valid: false, message: "ลาคลอดบุตรได้ไม่เกิน 90 วัน" };
   }
@@ -101,6 +119,7 @@ const validateMaternityLeave = async (userId, totalDays) => {
  */
 const validatePaternityLeave = async (
   userId,
+  leaveTypeId,
   startDate,
   childBirthDate,
   workingDays
@@ -122,18 +141,16 @@ const validatePaternityLeave = async (
   }
 
   // ลาได้ไม่เกิน 15 วันทำการ
-  const user = await User.findByPk(userId, {
-    include: [{ model: LeaveBalance, as: "leaveBalance" }],
-  });
-
-  if (!user || !user.leaveBalance) {
+  const balance = await getUserLeaveBalance(userId, leaveTypeId);
+  if (!balance) {
     return { valid: false, message: "ไม่พบข้อมูลวันลา" };
   }
 
-  if (workingDays > user.leaveBalance.paternity) {
+  const remaining = balance.getRemainingDays();
+  if (workingDays > remaining) {
     return {
       valid: false,
-      message: `สิทธิ์ลาช่วยภรรยาคลอดคงเหลือ ${user.leaveBalance.paternity} วันทำการ`,
+      message: `สิทธิ์ลาช่วยภรรยาคลอดคงเหลือ ${remaining} วันทำการ`,
     };
   }
 
@@ -143,19 +160,17 @@ const validatePaternityLeave = async (
 /**
  * ตรวจสอบเงื่อนไขการลากิจเลี้ยงดูบุตร
  */
-const validateChildcareLeave = async (userId, workingDays) => {
-  const user = await User.findByPk(userId, {
-    include: [{ model: LeaveBalance, as: "leaveBalance" }],
-  });
-
-  if (!user || !user.leaveBalance) {
+const validateChildcareLeave = async (userId, leaveTypeId, workingDays) => {
+  const balance = await getUserLeaveBalance(userId, leaveTypeId);
+  if (!balance) {
     return { valid: false, message: "ไม่พบข้อมูลวันลา" };
   }
 
-  if (workingDays > user.leaveBalance.childcare) {
+  const remaining = balance.getRemainingDays();
+  if (workingDays > remaining) {
     return {
       valid: false,
-      message: `สิทธิ์ลากิจเลี้ยงดูบุตรคงเหลือ ${user.leaveBalance.childcare} วันทำการ`,
+      message: `สิทธิ์ลากิจเลี้ยงดูบุตรคงเหลือ ${remaining} วันทำการ`,
     };
   }
 
@@ -167,6 +182,7 @@ const validateChildcareLeave = async (userId, workingDays) => {
  */
 const validateOrdinationLeave = async (
   userId,
+  leaveTypeId,
   startDate,
   ceremonyDate,
   totalDays
@@ -200,7 +216,7 @@ const validateOrdinationLeave = async (
 /**
  * ตรวจสอบเงื่อนไขการลาตรวจเลือก/เตรียมพล
  */
-const validateMilitaryLeave = async (userId, startDate) => {
+const validateMilitaryLeave = async (userId, leaveTypeId, startDate) => {
   // ต้องรายงานภายใน 48 ชั่วโมง แต่ไม่ต้องรออนุมัติ
   // Auto-approve ทันที
   return { valid: true, autoApprove: true };
@@ -209,22 +225,13 @@ const validateMilitaryLeave = async (userId, startDate) => {
 /**
  * ตรวจสอบเงื่อนไขการลากิจส่วนตัว
  */
-const validatePersonalLeave = async (userId, workingDays) => {
-  const user = await User.findByPk(userId, {
-    include: [{ model: LeaveBalance, as: "leaveBalance" }],
-  });
-
-  if (!user || !user.leaveBalance) {
+const validatePersonalLeave = async (userId, leaveTypeId, workingDays) => {
+  const balance = await getUserLeaveBalance(userId, leaveTypeId);
+  if (!balance) {
     return { valid: false, message: "ไม่พบข้อมูลวันลา" };
   }
 
-  const fiscalYear = getFiscalYear();
-  const maxDays = 45; // สมมติว่าไม่ใช่ปีแรก
-
-  // ตรวจสอบว่าใช้สิทธิ์ไปแล้วเท่าไหร่ในปีงบประมาณนี้
-  const usedDays = await getUsedLeaveDays(userId, "personal", fiscalYear);
-  const remaining = user.leaveBalance.personal - usedDays;
-
+  const remaining = balance.getRemainingDays();
   if (workingDays > remaining) {
     return {
       valid: false,
@@ -240,18 +247,11 @@ const validatePersonalLeave = async (userId, workingDays) => {
  */
 const validateSickLeave = async (
   userId,
+  leaveTypeId,
   totalDays,
   hasMedicalCertificate,
   isLongTermSick
 ) => {
-  const user = await User.findByPk(userId, {
-    include: [{ model: LeaveBalance, as: "leaveBalance" }],
-  });
-
-  if (!user || !user.leaveBalance) {
-    return { valid: false, message: "ไม่พบข้อมูลวันลา" };
-  }
-
   // ถ้าลา 30 วันขึ้นไปต้องมีใบรับรองแพทย์
   if (totalDays >= 30 && !hasMedicalCertificate) {
     return {
@@ -260,12 +260,12 @@ const validateSickLeave = async (
     };
   }
 
-  const fiscalYear = getFiscalYear();
-  const maxDays = 60;
+  const balance = await getUserLeaveBalance(userId, leaveTypeId);
+  if (!balance) {
+    return { valid: false, message: "ไม่พบข้อมูลวันลา" };
+  }
 
-  const usedDays = await getUsedLeaveDays(userId, "sick", fiscalYear);
-  const remaining = user.leaveBalance.sick - usedDays;
-
+  const remaining = balance.getRemainingDays();
   if (totalDays > remaining) {
     return {
       valid: false,
@@ -279,17 +279,13 @@ const validateSickLeave = async (
 /**
  * ตรวจสอบเงื่อนไขการลาพักผ่อน
  */
-const validateVacationLeave = async (userId, workingDays) => {
-  const user = await User.findByPk(userId, {
-    include: [{ model: LeaveBalance, as: "leaveBalance" }],
-  });
-
-  if (!user || !user.leaveBalance) {
+const validateVacationLeave = async (userId, leaveTypeId, workingDays) => {
+  const balance = await getUserLeaveBalance(userId, leaveTypeId);
+  if (!balance) {
     return { valid: false, message: "ไม่พบข้อมูลวันลา" };
   }
 
-  const remaining = user.leaveBalance.vacation;
-
+  const remaining = balance.getRemainingDays();
   if (workingDays > remaining) {
     return {
       valid: false,
@@ -303,37 +299,27 @@ const validateVacationLeave = async (userId, workingDays) => {
 /**
  * ดึงจำนวนวันลาที่ใช้ไปแล้วในปีงบประมาณ
  */
-const getUsedLeaveDays = async (
-  userId,
-  leaveType,
-  fiscalYear,
-  isLongTermSick = false
-) => {
+const getUsedLeaveDays = async (userId, leaveTypeId) => {
   const where = {
     userId,
-    leaveType,
+    leaveTypeId,
     status: {
-      [Op.in]: ["approved", "pending"],
+      [Op.in]: ["approved", "pending", "confirmed"],
     },
   };
 
   const requests = await LeaveRequest.findAll({ where });
-
-  // สำหรับประเภทที่นับเฉพาะวันทำการ
-  if (WORKING_DAYS_ONLY_LEAVE_TYPES.includes(leaveType)) {
-    return requests.reduce((sum, r) => sum + r.totalDays, 0);
-  }
-
-  return requests.reduce((sum, r) => sum + r.totalDays, 0);
+  return requests.reduce((sum, r) => sum + parseFloat(r.totalDays), 0);
 };
 
 /**
  * ตรวจสอบเงื่อนไขการลาทั้งหมด
+ * รับ leaveTypeId (INT FK) แทน leaveType (string)
  */
 const validateLeaveRequest = async (leaveData) => {
   const {
     userId,
-    leaveType,
+    leaveTypeId,
     startDate,
     endDate,
     childBirthDate,
@@ -343,56 +329,66 @@ const validateLeaveRequest = async (leaveData) => {
     timeSlot,
   } = leaveData;
 
+  // Lookup leave type by ID to get the code for business logic
+  const leaveTypeRecord = await LeaveType.findByPk(leaveTypeId);
+  if (!leaveTypeRecord) {
+    return { valid: false, message: "ประเภทการลาไม่ถูกต้อง", totalDays: 0, workingDays: 0 };
+  }
+  const leaveTypeCode = leaveTypeRecord.code;
+
   let totalDays = calculateTotalDays(startDate, endDate);
   let workingDays = await calculateWorkingDays(startDate, endDate);
 
   // Handle Half-Day logic
   if (timeSlot === "morning" || timeSlot === "afternoon") {
     totalDays = 0.5;
-    workingDays = workingDays > 0 ? 0.5 : 0; // If it's a working day, it counts as 0.5
+    workingDays = workingDays > 0 ? 0.5 : 0;
   }
 
   let result = { valid: true };
 
-  switch (leaveType) {
+  switch (leaveTypeCode) {
     case "maternity":
-      result = await validateMaternityLeave(userId, totalDays);
+      result = await validateMaternityLeave(userId, leaveTypeId, totalDays);
       break;
     case "paternity":
       result = await validatePaternityLeave(
         userId,
+        leaveTypeId,
         startDate,
         childBirthDate,
         workingDays
       );
       break;
     case "childcare":
-      result = await validateChildcareLeave(userId, workingDays);
+      result = await validateChildcareLeave(userId, leaveTypeId, workingDays);
       break;
     case "ordination":
       result = await validateOrdinationLeave(
         userId,
+        leaveTypeId,
         startDate,
         ceremonyDate,
         totalDays
       );
       break;
     case "military":
-      result = await validateMilitaryLeave(userId, startDate);
+      result = await validateMilitaryLeave(userId, leaveTypeId, startDate);
       break;
     case "personal":
-      result = await validatePersonalLeave(userId, workingDays);
+      result = await validatePersonalLeave(userId, leaveTypeId, workingDays);
       break;
     case "sick":
       result = await validateSickLeave(
         userId,
+        leaveTypeId,
         totalDays,
         hasMedicalCertificate,
         isLongTermSick
       );
       break;
     case "vacation":
-      result = await validateVacationLeave(userId, workingDays);
+      result = await validateVacationLeave(userId, leaveTypeId, workingDays);
       break;
     default:
       result = { valid: false, message: "ประเภทการลาไม่ถูกต้อง" };
@@ -402,31 +398,59 @@ const validateLeaveRequest = async (leaveData) => {
     ...result,
     totalDays,
     workingDays,
-    countWorkingDaysOnly: WORKING_DAYS_ONLY_LEAVE_TYPES.includes(leaveType),
+    countWorkingDaysOnly: WORKING_DAYS_ONLY_LEAVE_TYPES.includes(leaveTypeCode),
   };
 };
 
 /**
  * รีเซ็ตวันลาประจำปีงบประมาณใหม่ (1 ต.ค.)
+ * V2: สร้าง balance ใหม่สำหรับปีใหม่ พร้อม carry over
  */
 const resetAnnualLeaveBalance = async () => {
-  const [updatedCount] = await LeaveBalance.update(
-    {
-      sick: 60,
-      personal: 45,
-      vacation: 10,
-      maternity: 90,
-      paternity: 15,
-      childcare: 150,
-      ordination: 120,
-      military: 60,
-    },
-    {
-      where: {}, // Update all
-    }
-  );
+  const currentYear = new Date().getFullYear();
+  const newYear = currentYear + 1;
+  const leaveTypes = await LeaveType.findAll({ where: { isActive: true } });
+  const users = await User.findAll({ where: { isActive: true } });
 
-  return { success: true, usersUpdated: updatedCount };
+  let usersUpdated = 0;
+
+  for (const user of users) {
+    for (const lt of leaveTypes) {
+      // ดึง balance ปีปัจจุบัน
+      const currentBalance = await LeaveBalance.findOne({
+        where: { userId: user.id, leaveTypeId: lt.id, year: currentYear },
+      });
+
+      let carriedOver = 0;
+      if (currentBalance && lt.code === "vacation") {
+        // คำนวณวันลาพักผ่อนสะสม
+        const remaining = currentBalance.getRemainingDays();
+        // คำนวณอายุราชการ
+        let yearsOfService = 0;
+        if (user.startDate) {
+          const startDate = new Date(user.startDate);
+          yearsOfService = Math.floor(
+            (new Date() - startDate) / (365.25 * 24 * 60 * 60 * 1000)
+          );
+        }
+        const maxAccrued = yearsOfService >= 10 ? 20 : 10;
+        carriedOver = Math.min(remaining, maxAccrued);
+      }
+
+      // สร้าง balance สำหรับปีใหม่
+      await LeaveBalance.findOrCreate({
+        where: { userId: user.id, leaveTypeId: lt.id, year: newYear },
+        defaults: {
+          totalDays: lt.defaultDays,
+          usedDays: 0,
+          carriedOverDays: carriedOver,
+        },
+      });
+    }
+    usersUpdated++;
+  }
+
+  return { success: true, usersUpdated };
 };
 
 module.exports = {
@@ -436,6 +460,8 @@ module.exports = {
   validateLeaveRequest,
   resetAnnualLeaveBalance,
   getUsedLeaveDays,
+  getUserLeaveBalance,
+  getLeaveTypeByCode,
   WORKING_DAYS_ONLY_LEAVE_TYPES,
   INCLUDE_HOLIDAYS_LEAVE_TYPES,
 };

@@ -9,16 +9,16 @@ const LeaveType = sequelize.define(
   "LeaveType",
   {
     id: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.TINYINT.UNSIGNED,
       primaryKey: true,
       autoIncrement: true,
     },
     name: {
-      type: DataTypes.STRING(100),
+      type: DataTypes.STRING(60),
       allowNull: false,
     },
     code: {
-      type: DataTypes.STRING(50),
+      type: DataTypes.STRING(20),
       unique: true,
       allowNull: false,
       validate: {
@@ -37,16 +37,21 @@ const LeaveType = sequelize.define(
       },
     },
     description: {
-      type: DataTypes.TEXT,
+      type: DataTypes.STRING(200),
     },
     defaultDays: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.SMALLINT.UNSIGNED,
       field: "default_days",
     },
     requiresMedicalCert: {
       type: DataTypes.BOOLEAN,
       defaultValue: false,
       field: "requires_medical_cert",
+    },
+    isActive: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: true,
+      field: "is_active",
     },
   },
   {

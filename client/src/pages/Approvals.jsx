@@ -3,21 +3,14 @@ import { leaveRequestsAPI } from "../services/api";
 import { useToast } from "../components/common/Toast";
 import Navbar from "../components/common/Navbar";
 import Loading from "../components/common/Loading";
+import { getLeaveTypeName, getLeaveTypeIcon } from "../utils/leaveTypeUtils";
 import config from "../config";
 import "./Approvals.css";
 
 // React Icons
 import {
-  FaHospital,
-  FaClipboardList,
-  FaUmbrellaBeach,
   FaFileAlt,
   FaCheckCircle,
-  FaBaby,
-  FaUserFriends,
-  FaChild,
-  FaPray,
-  FaMedal,
   FaPaperclip,
   FaTimesCircle,
 } from "react-icons/fa";
@@ -76,42 +69,7 @@ const Approvals = () => {
     }
   };
 
-  const getLeaveTypeName = (type) => {
-    const types = {
-      sick: "ลาป่วย",
-      personal: "ลากิจส่วนตัว",
-      vacation: "ลาพักผ่อน",
-      maternity: "ลาคลอดบุตร",
-      paternity: "ลาช่วยภรรยาคลอด",
-      childcare: "ลาเลี้ยงดูบุตร",
-      ordination: "ลาอุปสมบท/ฮัจย์",
-      military: "ลาตรวจเลือก",
-    };
-    return types[type] || type;
-  };
-
-  const getLeaveTypeIcon = (type) => {
-    switch (type) {
-      case "sick":
-        return <FaHospital />;
-      case "personal":
-        return <FaClipboardList />;
-      case "vacation":
-        return <FaUmbrellaBeach />;
-      case "maternity":
-        return <FaBaby />;
-      case "paternity":
-        return <FaUserFriends />;
-      case "childcare":
-        return <FaChild />;
-      case "ordination":
-        return <FaPray />;
-      case "military":
-        return <FaMedal />;
-      default:
-        return <FaFileAlt />;
-    }
-  };
+  // getLeaveTypeName, getLeaveTypeIcon imported from utils/leaveTypeUtils
 
   const formatDate = (date) => {
     return new Date(date).toLocaleDateString("th-TH", {

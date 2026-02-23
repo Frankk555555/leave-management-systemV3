@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>โครงสร้างตารางฐานข้อมูล - ระบบบริหารการลา V2</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap');
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Sarabun', 'Segoe UI', sans-serif;
+      background: #f5f5f5;
+      color: #333;
+      padding: 40px;
+      font-size: 14px;
+    }
+
+    .document-header {
+      text-align: center;
+      margin-bottom: 40px;
+      padding-bottom: 20px;
+      border-bottom: 3px double #333;
+    }
+
+    .document-header h1 {
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .document-header p {
+      font-size: 14px;
+      color: #666;
+    }
+
+    .table-section {
+      background: #fff;
+      margin-bottom: 30px;
+      border: 1px solid #ccc;
+      page-break-inside: avoid;
+    }
+
+    .table-title {
+      background: #2c3e50;
+      color: #fff;
+      padding: 10px 16px;
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    .table-title span {
+      font-weight: 300;
+      font-size: 13px;
+      margin-left: 8px;
+      opacity: 0.85;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    thead th {
+      background: #ecf0f1;
+      border: 1px solid #bbb;
+      padding: 8px 12px;
+      text-align: left;
+      font-weight: 600;
+      font-size: 13px;
+      color: #2c3e50;
+    }
+
+    tbody td {
+      border: 1px solid #ccc;
+      padding: 6px 12px;
+      font-size: 13px;
+      vertical-align: top;
+    }
+
+    tbody tr:nth-child(even) {
+      background: #fafafa;
+    }
+
+    tbody tr:hover {
+      background: #eef6ff;
+    }
+
+    .col-column { width: 18%; font-weight: 600; }
+    .col-datatype { width: 18%; font-family: 'Consolas', 'Courier New', monospace; font-size: 12px; color: #c0392b; }
+    .col-constraints { width: 32%; font-family: 'Consolas', 'Courier New', monospace; font-size: 12px; }
+    .col-description { width: 32%; }
+
+    .pk { color: #e67e22; font-weight: 600; }
+    .fk { color: #2980b9; font-weight: 600; }
+
+    .relationship-section {
+      background: #fff;
+      border: 1px solid #ccc;
+      padding: 20px;
+      margin-bottom: 30px;
+    }
+
+    .relationship-section h2 {
+      font-size: 18px;
+      margin-bottom: 12px;
+      color: #2c3e50;
+    }
+
+    .relationship-section pre {
+      font-family: 'Consolas', 'Courier New', monospace;
+      font-size: 13px;
+      line-height: 1.6;
+      background: #f8f9fa;
+      padding: 16px;
+      border: 1px solid #ddd;
+      overflow-x: auto;
+    }
+
+    @media print {
+      body { padding: 20px; background: #fff; font-size: 12px; }
+      .table-section { margin-bottom: 15px; }
+      .table-title { font-size: 14px; }
+      thead th, tbody td { padding: 4px 8px; font-size: 11px; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="document-header">
+    <h1>โครงสร้างตารางฐานข้อมูล</h1>
+    <p>ระบบบริหารการลา มหาวิทยาลัยราชภัฏบุรีรัมย์ — Schema V2 (MySQL / InnoDB)</p>
+  </div>
+
+  <!-- ==================== 1. faculties ==================== -->
+  <div class="table-section">
+    <div class="table-title">1. faculties <span>(คณะ / สำนัก / สถาบัน)</span></div>
+    <table>
+      <thead>
+        <tr>
+          <th class="col-column">Column</th>
+          <th class="col-datatype">Data Type</th>
+          <th class="col-constraints">Constraints</th>
+          <th class="col-description">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td class="col-column">id</td><td class="col-datatype">SMALLINT UNSIGNED</td><td class="col-constraints"><span class="pk">PRIMARY KEY</span>, AUTO_INCREMENT</td><td>หมายเลขประจำตัวคณะ</td></tr>
+        <tr><td class="col-column">name</td><td class="col-datatype">VARCHAR(100)</td><td class="col-constraints">NOT NULL</td><td>ชื่อคณะ/สำนัก</td></tr>
+        <tr><td class="col-column">code</td><td class="col-datatype">VARCHAR(20)</td><td class="col-constraints">NOT NULL, UNIQUE</td><td>รหัสคณะ (เช่น EDU, SCI)</td></tr>
+        <tr><td class="col-column">type</td><td class="col-datatype">ENUM('faculty','office','institute')</td><td class="col-constraints">DEFAULT 'faculty'</td><td>ประเภท: คณะ/สำนัก/สถาบัน</td></tr>
+        <tr><td class="col-column">is_active</td><td class="col-datatype">TINYINT(1)</td><td class="col-constraints">DEFAULT 1</td><td>สถานะใช้งาน</td></tr>
+        <tr><td class="col-column">created_at</td><td class="col-datatype">TIMESTAMP</td><td class="col-constraints">DEFAULT CURRENT_TIMESTAMP</td><td>วันที่สร้างข้อมูล</td></tr>
+        <tr><td class="col-column">updated_at</td><td class="col-datatype">TIMESTAMP</td><td class="col-constraints">DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP</td><td>วันที่แก้ไขล่าสุด</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ==================== 2. departments ==================== -->
+  <div class="table-section">
+    <div class="table-title">2. departments <span>(สาขาวิชา / หน่วยงาน)</span></div>
+    <table>
+      <thead>
+        <tr>
+          <th class="col-column">Column</th>
+          <th class="col-datatype">Data Type</th>
+          <th class="col-constraints">Constraints</th>
+          <th class="col-description">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td class="col-column">id</td><td class="col-datatype">SMALLINT UNSIGNED</td><td class="col-constraints"><span class="pk">PRIMARY KEY</span>, AUTO_INCREMENT</td><td>หมายเลขประจำตัวสาขา/แผนก</td></tr>
+        <tr><td class="col-column">faculty_id</td><td class="col-datatype">SMALLINT UNSIGNED</td><td class="col-constraints"><span class="fk">FOREIGN KEY → faculties(id)</span></td><td>รหัสคณะที่สังกัด</td></tr>
+        <tr><td class="col-column">name</td><td class="col-datatype">VARCHAR(100)</td><td class="col-constraints">NOT NULL</td><td>ชื่อสาขา/แผนก</td></tr>
+        <tr><td class="col-column">code</td><td class="col-datatype">VARCHAR(20)</td><td class="col-constraints">NOT NULL, UNIQUE</td><td>รหัสสาขา/แผนก</td></tr>
+        <tr><td class="col-column">is_active</td><td class="col-datatype">TINYINT(1)</td><td class="col-constraints">DEFAULT 1</td><td>สถานะใช้งาน</td></tr>
+        <tr><td class="col-column">created_at</td><td class="col-datatype">TIMESTAMP</td><td class="col-constraints">DEFAULT CURRENT_TIMESTAMP</td><td>วันที่สร้างข้อมูล</td></tr>
+        <tr><td class="col-column">updated_at</td><td class="col-datatype">TIMESTAMP</td><td class="col-constraints">DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP</td><td>วันที่แก้ไขล่าสุด</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ==================== 3. users ==================== -->
+  <div class="table-section">
+    <div class="table-title">3. users <span>(ผู้ใช้งาน / บุคลากร)</span></div>
+    <table>
+      <thead>
+        <tr>
+          <th class="col-column">Column</th>
+          <th class="col-datatype">Data Type</th>
+          <th class="col-constraints">Constraints</th>
+          <th class="col-description">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td class="col-column">id</td><td class="col-datatype">INT UNSIGNED</td><td class="col-constraints"><span class="pk">PRIMARY KEY</span>, AUTO_INCREMENT</td><td>หมายเลขประจำตัวผู้ใช้</td></tr>
+        <tr><td class="col-column">employee_id</td><td class="col-datatype">VARCHAR(20)</td><td class="col-constraints">NOT NULL, UNIQUE</td><td>รหัสพนักงาน</td></tr>
+        <tr><td class="col-column">email</td><td class="col-datatype">VARCHAR(80)</td><td class="col-constraints">NOT NULL, UNIQUE</td><td>อีเมล</td></tr>
+        <tr><td class="col-column">password</td><td class="col-datatype">CHAR(60)</td><td class="col-constraints">NOT NULL</td><td>รหัสผ่าน (bcrypt hash 60 chars)</td></tr>
+        <tr><td class="col-column">first_name</td><td class="col-datatype">VARCHAR(50)</td><td class="col-constraints"></td><td>ชื่อ</td></tr>
+        <tr><td class="col-column">last_name</td><td class="col-datatype">VARCHAR(50)</td><td class="col-constraints"></td><td>นามสกุล</td></tr>
+        <tr><td class="col-column">department_id</td><td class="col-datatype">SMALLINT UNSIGNED</td><td class="col-constraints"><span class="fk">FOREIGN KEY → departments(id)</span></td><td>รหัสสาขา/แผนกที่สังกัด</td></tr>
+        <tr><td class="col-column">position</td><td class="col-datatype">VARCHAR(80)</td><td class="col-constraints"></td><td>ตำแหน่ง</td></tr>
+        <tr><td class="col-column">role</td><td class="col-datatype">ENUM('employee','head','admin')</td><td class="col-constraints">DEFAULT 'employee'</td><td>บทบาท: พนักงาน/หัวหน้า/ผู้ดูแล</td></tr>
+        <tr><td class="col-column">supervisor_id</td><td class="col-datatype">INT UNSIGNED</td><td class="col-constraints"><span class="fk">FOREIGN KEY → users(id)</span></td><td>รหัสหัวหน้างาน (Self-ref FK)</td></tr>
+        <tr><td class="col-column">phone</td><td class="col-datatype">VARCHAR(15)</td><td class="col-constraints"></td><td>เบอร์โทรศัพท์</td></tr>
+        <tr><td class="col-column">profile_image</td><td class="col-datatype">VARCHAR(150)</td><td class="col-constraints"></td><td>เส้นทางรูปโปรไฟล์</td></tr>
+        <tr><td class="col-column">start_date</td><td class="col-datatype">DATE</td><td class="col-constraints"></td><td>วันที่เริ่มรับราชการ</td></tr>
+        <tr><td class="col-column">government_division</td><td class="col-datatype">VARCHAR(100)</td><td class="col-constraints"></td><td>ส่วนราชการ</td></tr>
+        <tr><td class="col-column">document_number</td><td class="col-datatype">VARCHAR(50)</td><td class="col-constraints"></td><td>ที่ (เลขหนังสือ)</td></tr>
+        <tr><td class="col-column">unit</td><td class="col-datatype">VARCHAR(100)</td><td class="col-constraints"></td><td>หน่วยงาน</td></tr>
+        <tr><td class="col-column">affiliation</td><td class="col-datatype">VARCHAR(100)</td><td class="col-constraints"></td><td>สังกัด (คณะ)</td></tr>
+        <tr><td class="col-column">is_active</td><td class="col-datatype">TINYINT(1)</td><td class="col-constraints">DEFAULT 1</td><td>สถานะใช้งาน (Soft delete)</td></tr>
+        <tr><td class="col-column">created_at</td><td class="col-datatype">TIMESTAMP</td><td class="col-constraints">DEFAULT CURRENT_TIMESTAMP</td><td>วันที่สร้างข้อมูล</td></tr>
+        <tr><td class="col-column">updated_at</td><td class="col-datatype">TIMESTAMP</td><td class="col-constraints">DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP</td><td>วันที่แก้ไขล่าสุด</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ==================== 4. leave_types ==================== -->
+  <div class="table-section">
+    <div class="table-title">4. leave_types <span>(ประเภทการลา)</span></div>
+    <table>
+      <thead>
+        <tr>
+          <th class="col-column">Column</th>
+          <th class="col-datatype">Data Type</th>
+          <th class="col-constraints">Constraints</th>
+          <th class="col-description">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td class="col-column">id</td><td class="col-datatype">TINYINT UNSIGNED</td><td class="col-constraints"><span class="pk">PRIMARY KEY</span>, AUTO_INCREMENT</td><td>หมายเลขประเภทลา</td></tr>
+        <tr><td class="col-column">name</td><td class="col-datatype">VARCHAR(60)</td><td class="col-constraints">NOT NULL</td><td>ชื่อประเภทลา (เช่น ลาป่วย)</td></tr>
+        <tr><td class="col-column">code</td><td class="col-datatype">VARCHAR(20)</td><td class="col-constraints">NOT NULL, UNIQUE</td><td>รหัสประเภทลา (เช่น sick)</td></tr>
+        <tr><td class="col-column">description</td><td class="col-datatype">VARCHAR(200)</td><td class="col-constraints"></td><td>คำอธิบายประเภทลา</td></tr>
+        <tr><td class="col-column">default_days</td><td class="col-datatype">SMALLINT UNSIGNED</td><td class="col-constraints">NOT NULL, DEFAULT 0</td><td>จำนวนวันลาสูงสุดต่อปี (0 = ไม่จำกัด)</td></tr>
+        <tr><td class="col-column">requires_medical_cert</td><td class="col-datatype">TINYINT(1)</td><td class="col-constraints">DEFAULT 0</td><td>ต้องแนบใบรับรองแพทย์หรือไม่</td></tr>
+        <tr><td class="col-column">is_active</td><td class="col-datatype">TINYINT(1)</td><td class="col-constraints">DEFAULT 1</td><td>สถานะใช้งาน</td></tr>
+        <tr><td class="col-column">created_at</td><td class="col-datatype">TIMESTAMP</td><td class="col-constraints">DEFAULT CURRENT_TIMESTAMP</td><td>วันที่สร้างข้อมูล</td></tr>
+        <tr><td class="col-column">updated_at</td><td class="col-datatype">TIMESTAMP</td><td class="col-constraints">DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP</td><td>วันที่แก้ไขล่าสุด</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ==================== 5. leave_balances ==================== -->
+  <div class="table-section">
+    <div class="table-title">5. leave_balances <span>(ยอดวันลาคงเหลือ — Normalized)</span></div>
+    <table>
+      <thead>
+        <tr>
+          <th class="col-column">Column</th>
+          <th class="col-datatype">Data Type</th>
+          <th class="col-constraints">Constraints</th>
+          <th class="col-description">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td class="col-column">id</td><td class="col-datatype">INT UNSIGNED</td><td class="col-constraints"><span class="pk">PRIMARY KEY</span>, AUTO_INCREMENT</td><td>หมายเลขรายการ</td></tr>
+        <tr><td class="col-column">user_id</td><td class="col-datatype">INT UNSIGNED</td><td class="col-constraints">NOT NULL, <span class="fk">FOREIGN KEY → users(id)</span></td><td>รหัสผู้ใช้</td></tr>
+        <tr><td class="col-column">leave_type_id</td><td class="col-datatype">TINYINT UNSIGNED</td><td class="col-constraints">NOT NULL, <span class="fk">FOREIGN KEY → leave_types(id)</span></td><td>รหัสประเภทลา</td></tr>
+        <tr><td class="col-column">year</td><td class="col-datatype">YEAR</td><td class="col-constraints">NOT NULL</td><td>ปีงบประมาณ</td></tr>
+        <tr><td class="col-column">total_days</td><td class="col-datatype">DECIMAL(4,1)</td><td class="col-constraints">NOT NULL, DEFAULT 0</td><td>จำนวนวันลาทั้งหมดที่ได้รับ</td></tr>
+        <tr><td class="col-column">used_days</td><td class="col-datatype">DECIMAL(4,1)</td><td class="col-constraints">NOT NULL, DEFAULT 0</td><td>จำนวนวันลาที่ใช้ไปแล้ว</td></tr>
+        <tr><td class="col-column">carried_over_days</td><td class="col-datatype">DECIMAL(4,1)</td><td class="col-constraints">NOT NULL, DEFAULT 0</td><td>จำนวนวันลาสะสมจากปีก่อน</td></tr>
+        <tr><td class="col-column">created_at</td><td class="col-datatype">TIMESTAMP</td><td class="col-constraints">DEFAULT CURRENT_TIMESTAMP</td><td>วันที่สร้างข้อมูล</td></tr>
+        <tr><td class="col-column">updated_at</td><td class="col-datatype">TIMESTAMP</td><td class="col-constraints">DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP</td><td>วันที่แก้ไขล่าสุด</td></tr>
+      </tbody>
+    </table>
+    <div style="background:#fff8e1; padding:8px 16px; border-top:1px solid #ccc; font-size:12px;">
+      <strong>UNIQUE KEY:</strong> uk_user_type_year (user_id, leave_type_id, year) — ป้องกันข้อมูลซ้ำ: 1 คน + 1 ประเภทลา + 1 ปี = 1 แถว
+    </div>
+  </div>
+
+  <!-- ==================== 6. leave_requests ==================== -->
+  <div class="table-section">
+    <div class="table-title">6. leave_requests <span>(คำขอลา)</span></div>
+    <table>
+      <thead>
+        <tr>
+          <th class="col-column">Column</th>
+          <th class="col-datatype">Data Type</th>
+          <th class="col-constraints">Constraints</th>
+          <th class="col-description">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td class="col-column">id</td><td class="col-datatype">INT UNSIGNED</td><td class="col-constraints"><span class="pk">PRIMARY KEY</span>, AUTO_INCREMENT</td><td>หมายเลขคำขอลา</td></tr>
+        <tr><td class="col-column">user_id</td><td class="col-datatype">INT UNSIGNED</td><td class="col-constraints">NOT NULL, <span class="fk">FOREIGN KEY → users(id)</span></td><td>รหัสผู้ยื่นคำขอ</td></tr>
+        <tr><td class="col-column">leave_type_id</td><td class="col-datatype">TINYINT UNSIGNED</td><td class="col-constraints">NOT NULL, <span class="fk">FOREIGN KEY → leave_types(id)</span></td><td>รหัสประเภทลา</td></tr>
+        <tr><td class="col-column">start_date</td><td class="col-datatype">DATE</td><td class="col-constraints">NOT NULL</td><td>วันที่เริ่มลา</td></tr>
+        <tr><td class="col-column">end_date</td><td class="col-datatype">DATE</td><td class="col-constraints">NOT NULL</td><td>วันที่สิ้นสุดลา</td></tr>
+        <tr><td class="col-column">total_days</td><td class="col-datatype">DECIMAL(4,1)</td><td class="col-constraints">NOT NULL</td><td>จำนวนวันลา (รองรับครึ่งวัน 0.5)</td></tr>
+        <tr><td class="col-column">time_slot</td><td class="col-datatype">ENUM('full','morning','afternoon')</td><td class="col-constraints">DEFAULT 'full'</td><td>ช่วงเวลา: เต็มวัน/ครึ่งเช้า/ครึ่งบ่าย</td></tr>
+        <tr><td class="col-column">reason</td><td class="col-datatype">VARCHAR(500)</td><td class="col-constraints"></td><td>เหตุผลการลา</td></tr>
+        <tr><td class="col-column">contact_address</td><td class="col-datatype">VARCHAR(300)</td><td class="col-constraints"></td><td>ที่อยู่ระหว่างลา</td></tr>
+        <tr><td class="col-column">contact_phone</td><td class="col-datatype">VARCHAR(15)</td><td class="col-constraints"></td><td>เบอร์โทรระหว่างลา</td></tr>
+        <tr><td class="col-column">status</td><td class="col-datatype">ENUM('pending','approved','rejected','confirmed','cancelled')</td><td class="col-constraints">DEFAULT 'pending'</td><td>สถานะคำขอลา</td></tr>
+        <tr><td class="col-column">approved_by</td><td class="col-datatype">INT UNSIGNED</td><td class="col-constraints"><span class="fk">FOREIGN KEY → users(id)</span></td><td>รหัสผู้อนุมัติ (head)</td></tr>
+        <tr><td class="col-column">approved_at</td><td class="col-datatype">TIMESTAMP</td><td class="col-constraints">NULL</td><td>วันที่อนุมัติ</td></tr>
+        <tr><td class="col-column">rejection_reason</td><td class="col-datatype">VARCHAR(500)</td><td class="col-constraints"></td><td>เหตุผลที่ปฏิเสธ</td></tr>
+        <tr><td class="col-column">confirmed_by</td><td class="col-datatype">INT UNSIGNED</td><td class="col-constraints"><span class="fk">FOREIGN KEY → users(id)</span></td><td>รหัสผู้ยืนยัน (admin)</td></tr>
+        <tr><td class="col-column">confirmed_at</td><td class="col-datatype">TIMESTAMP</td><td class="col-constraints">NULL</td><td>วันที่ยืนยัน</td></tr>
+        <tr><td class="col-column">confirmed_note</td><td class="col-datatype">VARCHAR(500)</td><td class="col-constraints"></td><td>หมายเหตุการยืนยัน</td></tr>
+        <tr><td class="col-column">cancelled_at</td><td class="col-datatype">TIMESTAMP</td><td class="col-constraints">NULL</td><td>วันที่ยกเลิก</td></tr>
+        <tr><td class="col-column">cancel_reason</td><td class="col-datatype">VARCHAR(500)</td><td class="col-constraints"></td><td>เหตุผลการยกเลิก</td></tr>
+        <tr><td class="col-column">created_at</td><td class="col-datatype">TIMESTAMP</td><td class="col-constraints">DEFAULT CURRENT_TIMESTAMP</td><td>วันที่สร้างข้อมูล</td></tr>
+        <tr><td class="col-column">updated_at</td><td class="col-datatype">TIMESTAMP</td><td class="col-constraints">DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP</td><td>วันที่แก้ไขล่าสุด</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ==================== 7. leave_attachments ==================== -->
+  <div class="table-section">
+    <div class="table-title">7. leave_attachments <span>(ไฟล์แนบคำขอลา)</span></div>
+    <table>
+      <thead>
+        <tr>
+          <th class="col-column">Column</th>
+          <th class="col-datatype">Data Type</th>
+          <th class="col-constraints">Constraints</th>
+          <th class="col-description">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td class="col-column">id</td><td class="col-datatype">INT UNSIGNED</td><td class="col-constraints"><span class="pk">PRIMARY KEY</span>, AUTO_INCREMENT</td><td>หมายเลขไฟล์แนบ</td></tr>
+        <tr><td class="col-column">leave_request_id</td><td class="col-datatype">INT UNSIGNED</td><td class="col-constraints">NOT NULL, <span class="fk">FOREIGN KEY → leave_requests(id)</span></td><td>รหัสคำขอลาที่แนบ</td></tr>
+        <tr><td class="col-column">file_name</td><td class="col-datatype">VARCHAR(100)</td><td class="col-constraints">NOT NULL</td><td>ชื่อไฟล์ที่เก็บในระบบ</td></tr>
+        <tr><td class="col-column">original_name</td><td class="col-datatype">VARCHAR(150)</td><td class="col-constraints"></td><td>ชื่อไฟล์ต้นฉบับ</td></tr>
+        <tr><td class="col-column">file_path</td><td class="col-datatype">VARCHAR(255)</td><td class="col-constraints">NOT NULL</td><td>เส้นทางไฟล์</td></tr>
+        <tr><td class="col-column">file_type</td><td class="col-datatype">VARCHAR(50)</td><td class="col-constraints"></td><td>ประเภทไฟล์ (MIME type)</td></tr>
+        <tr><td class="col-column">file_size</td><td class="col-datatype">INT UNSIGNED</td><td class="col-constraints"></td><td>ขนาดไฟล์ (bytes)</td></tr>
+        <tr><td class="col-column">created_at</td><td class="col-datatype">TIMESTAMP</td><td class="col-constraints">DEFAULT CURRENT_TIMESTAMP</td><td>วันที่สร้างข้อมูล</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ==================== 8. holidays ==================== -->
+  <div class="table-section">
+    <div class="table-title">8. holidays <span>(วันหยุดราชการ)</span></div>
+    <table>
+      <thead>
+        <tr>
+          <th class="col-column">Column</th>
+          <th class="col-datatype">Data Type</th>
+          <th class="col-constraints">Constraints</th>
+          <th class="col-description">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td class="col-column">id</td><td class="col-datatype">SMALLINT UNSIGNED</td><td class="col-constraints"><span class="pk">PRIMARY KEY</span>, AUTO_INCREMENT</td><td>หมายเลขวันหยุด</td></tr>
+        <tr><td class="col-column">name</td><td class="col-datatype">VARCHAR(120)</td><td class="col-constraints">NOT NULL</td><td>ชื่อวันหยุด</td></tr>
+        <tr><td class="col-column">date</td><td class="col-datatype">DATE</td><td class="col-constraints">NOT NULL, UNIQUE</td><td>วันที่หยุด</td></tr>
+        <tr><td class="col-column">year</td><td class="col-datatype">YEAR</td><td class="col-constraints"></td><td>ปีของวันหยุด</td></tr>
+        <tr><td class="col-column">type</td><td class="col-datatype">ENUM('national','special','compensatory')</td><td class="col-constraints">DEFAULT 'national'</td><td>ประเภท: ราชการ/พิเศษ/วันชดเชย</td></tr>
+        <tr><td class="col-column">description</td><td class="col-datatype">VARCHAR(255)</td><td class="col-constraints"></td><td>คำอธิบาย</td></tr>
+        <tr><td class="col-column">created_at</td><td class="col-datatype">TIMESTAMP</td><td class="col-constraints">DEFAULT CURRENT_TIMESTAMP</td><td>วันที่สร้างข้อมูล</td></tr>
+        <tr><td class="col-column">updated_at</td><td class="col-datatype">TIMESTAMP</td><td class="col-constraints">DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP</td><td>วันที่แก้ไขล่าสุด</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ==================== 9. notifications ==================== -->
+  <div class="table-section">
+    <div class="table-title">9. notifications <span>(การแจ้งเตือน)</span></div>
+    <table>
+      <thead>
+        <tr>
+          <th class="col-column">Column</th>
+          <th class="col-datatype">Data Type</th>
+          <th class="col-constraints">Constraints</th>
+          <th class="col-description">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td class="col-column">id</td><td class="col-datatype">INT UNSIGNED</td><td class="col-constraints"><span class="pk">PRIMARY KEY</span>, AUTO_INCREMENT</td><td>หมายเลขการแจ้งเตือน</td></tr>
+        <tr><td class="col-column">user_id</td><td class="col-datatype">INT UNSIGNED</td><td class="col-constraints">NOT NULL, <span class="fk">FOREIGN KEY → users(id)</span></td><td>รหัสผู้รับแจ้งเตือน</td></tr>
+        <tr><td class="col-column">type</td><td class="col-datatype">ENUM('leave_request','approval','rejection','confirmation','new_leave','cancellation','reminder')</td><td class="col-constraints">NOT NULL</td><td>ประเภทแจ้งเตือน</td></tr>
+        <tr><td class="col-column">title</td><td class="col-datatype">VARCHAR(100)</td><td class="col-constraints">NOT NULL</td><td>หัวข้อแจ้งเตือน</td></tr>
+        <tr><td class="col-column">message</td><td class="col-datatype">VARCHAR(500)</td><td class="col-constraints">NOT NULL</td><td>ข้อความแจ้งเตือน</td></tr>
+        <tr><td class="col-column">related_leave_id</td><td class="col-datatype">INT UNSIGNED</td><td class="col-constraints"><span class="fk">FOREIGN KEY → leave_requests(id)</span></td><td>รหัสคำขอลาที่เกี่ยวข้อง</td></tr>
+        <tr><td class="col-column">is_read</td><td class="col-datatype">TINYINT(1)</td><td class="col-constraints">DEFAULT 0</td><td>สถานะอ่านแล้ว</td></tr>
+        <tr><td class="col-column">read_at</td><td class="col-datatype">TIMESTAMP</td><td class="col-constraints">NULL</td><td>เวลาที่อ่าน</td></tr>
+        <tr><td class="col-column">created_at</td><td class="col-datatype">TIMESTAMP</td><td class="col-constraints">DEFAULT CURRENT_TIMESTAMP</td><td>วันที่สร้างข้อมูล</td></tr>
+        <tr><td class="col-column">updated_at</td><td class="col-datatype">TIMESTAMP</td><td class="col-constraints">DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP</td><td>วันที่แก้ไขล่าสุด</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ==================== 10. leave_history ==================== -->
+  <div class="table-section">
+    <div class="table-title">10. leave_history <span>(ประวัติการเปลี่ยนแปลง — Audit Trail)</span></div>
+    <table>
+      <thead>
+        <tr>
+          <th class="col-column">Column</th>
+          <th class="col-datatype">Data Type</th>
+          <th class="col-constraints">Constraints</th>
+          <th class="col-description">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td class="col-column">id</td><td class="col-datatype">INT UNSIGNED</td><td class="col-constraints"><span class="pk">PRIMARY KEY</span>, AUTO_INCREMENT</td><td>หมายเลขประวัติ</td></tr>
+        <tr><td class="col-column">leave_request_id</td><td class="col-datatype">INT UNSIGNED</td><td class="col-constraints">NOT NULL, <span class="fk">FOREIGN KEY → leave_requests(id)</span></td><td>รหัสคำขอลา</td></tr>
+        <tr><td class="col-column">action</td><td class="col-datatype">ENUM('created','approved','rejected','confirmed','cancelled','edited')</td><td class="col-constraints">NOT NULL</td><td>การกระทำ</td></tr>
+        <tr><td class="col-column">action_by</td><td class="col-datatype">INT UNSIGNED</td><td class="col-constraints"><span class="fk">FOREIGN KEY → users(id)</span></td><td>รหัสผู้กระทำ</td></tr>
+        <tr><td class="col-column">old_status</td><td class="col-datatype">ENUM('pending','approved','rejected','confirmed','cancelled')</td><td class="col-constraints"></td><td>สถานะเดิม</td></tr>
+        <tr><td class="col-column">new_status</td><td class="col-datatype">ENUM('pending','approved','rejected','confirmed','cancelled')</td><td class="col-constraints"></td><td>สถานะใหม่</td></tr>
+        <tr><td class="col-column">note</td><td class="col-datatype">VARCHAR(500)</td><td class="col-constraints"></td><td>หมายเหตุเพิ่มเติม</td></tr>
+        <tr><td class="col-column">created_at</td><td class="col-datatype">TIMESTAMP</td><td class="col-constraints">DEFAULT CURRENT_TIMESTAMP</td><td>วันที่บันทึก</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ==================== Relationships ==================== -->
+  <div class="relationship-section">
+    <h2>ความสัมพันธ์ระหว่างตาราง (Relationships)</h2>
+    <pre>
+faculties ──1:N──► departments ──1:N──► users
+                                         │
+                                         ├──1:N──► leave_balances ◄──N:1── leave_types
+                                         │
+                                         ├──1:N──► leave_requests ◄──N:1── leave_types
+                                         │              │
+                                         │              ├──1:N──► leave_attachments
+                                         │              ├──1:N──► leave_history
+                                         │              └──1:N──► notifications
+                                         │
+                                         └── supervisor_id (Self-referencing FK)
+    </pre>
+  </div>
+
+</body>
+</html>

@@ -9,12 +9,12 @@ const Notification = sequelize.define(
   "Notification",
   {
     id: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.INTEGER.UNSIGNED,
       primaryKey: true,
       autoIncrement: true,
     },
     userId: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.INTEGER.UNSIGNED,
       allowNull: false,
       field: "user_id",
     },
@@ -24,20 +24,22 @@ const Notification = sequelize.define(
         "approval",
         "rejection",
         "confirmation",
-        "new_leave"
+        "new_leave",
+        "cancellation",
+        "reminder"
       ),
       allowNull: false,
     },
     title: {
-      type: DataTypes.STRING(255),
+      type: DataTypes.STRING(100),
       allowNull: false,
     },
     message: {
-      type: DataTypes.TEXT,
+      type: DataTypes.STRING(500),
       allowNull: false,
     },
     relatedLeaveId: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.INTEGER.UNSIGNED,
       field: "related_leave_id",
       allowNull: true,
     },
@@ -45,6 +47,12 @@ const Notification = sequelize.define(
       type: DataTypes.BOOLEAN,
       defaultValue: false,
       field: "is_read",
+    },
+    readAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      field: "read_at",
+      comment: "เวลาที่อ่าน notification",
     },
   },
   {

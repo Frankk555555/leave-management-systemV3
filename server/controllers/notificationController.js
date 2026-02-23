@@ -1,4 +1,4 @@
-const { Notification, LeaveRequest, User } = require("../models");
+const { Notification, LeaveRequest, LeaveType, User } = require("../models");
 const { Op } = require("sequelize");
 
 // @desc    Get my notifications
@@ -12,7 +12,14 @@ const getMyNotifications = async (req, res) => {
         {
           model: LeaveRequest,
           as: "relatedLeave",
-          attributes: ["id", "leaveType", "startDate", "endDate", "status"],
+          attributes: ["id", "leaveTypeId", "startDate", "endDate", "status"],
+          include: [
+            {
+              model: LeaveType,
+              as: "leaveType",
+              attributes: ["id", "name", "code"],
+            },
+          ],
         },
       ],
       order: [["createdAt", "DESC"]],
@@ -58,7 +65,7 @@ const markAsRead = async (req, res) => {
       return res.status(403).json({ message: "Not authorized" });
     }
 
-    await notification.update({ isRead: true });
+    await notification.update({ isRead: true, readAt: new Date() });
 
     res.json(notification);
   } catch (error) {
@@ -73,7 +80,7 @@ const markAsRead = async (req, res) => {
 const markAllAsRead = async (req, res) => {
   try {
     await Notification.update(
-      { isRead: true },
+      { isRead: true, readAt: new Date() },
       {
         where: {
           userId: req.user.id,

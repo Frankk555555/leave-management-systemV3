@@ -5,20 +5,13 @@ import { useToast } from "../components/common/Toast";
 import Navbar from "../components/common/Navbar";
 import Loading from "../components/common/Loading";
 import generateLeavePDF, { previewLeavePDF } from "../utils/generateLeavePDF";
+import { getLeaveTypeName, getLeaveTypeIcon, getLeaveTypeCode } from "../utils/leaveTypeUtils";
 import config from "../config";
 import "./LeaveHistory.css";
 
 // React Icons
 import {
-  FaHospital,
-  FaClipboardList,
-  FaUmbrellaBeach,
   FaFileAlt,
-  FaBaby,
-  FaUserFriends,
-  FaChild,
-  FaPray,
-  FaMedal,
   FaPaperclip,
   FaFilePdf,
   FaEye,
@@ -54,13 +47,14 @@ const LeaveHistory = () => {
 
     // รวมจำนวนวันลาที่ผ่านมา
     confirmedRequests.forEach((r) => {
-      if (leaveStats[r.leaveType]) {
-        leaveStats[r.leaveType].used += r.totalDays || 0;
+      const code = getLeaveTypeCode(r.leaveType);
+      if (leaveStats[code]) {
+        leaveStats[code].used += r.totalDays || 0;
       }
     });
 
     const leaveData = {
-      leaveType: request.leaveType,
+      leaveType: getLeaveTypeCode(request.leaveType),
       startDate: request.startDate,
       endDate: request.endDate,
       reason: request.reason,
@@ -88,8 +82,9 @@ const LeaveHistory = () => {
     };
 
     confirmedRequests.forEach((r) => {
-      if (leaveStats[r.leaveType]) {
-        leaveStats[r.leaveType].used += r.totalDays || 0;
+      const code = getLeaveTypeCode(r.leaveType);
+      if (leaveStats[code]) {
+        leaveStats[code].used += r.totalDays || 0;
       }
     });
 
@@ -125,42 +120,7 @@ const LeaveHistory = () => {
     window.open(`${config.API_URL}${normalizedPath}`, "_blank");
   };
 
-  const getLeaveTypeName = (type) => {
-    const types = {
-      sick: "ลาป่วย",
-      personal: "ลากิจส่วนตัว",
-      vacation: "ลาพักผ่อน",
-      maternity: "ลาคลอดบุตร",
-      paternity: "ลาช่วยภรรยาคลอด",
-      childcare: "ลาเลี้ยงดูบุตร",
-      ordination: "ลาอุปสมบท/ฮัจย์",
-      military: "ลาตรวจเลือก",
-    };
-    return types[type] || type;
-  };
-
-  const getLeaveTypeIcon = (type) => {
-    switch (type) {
-      case "sick":
-        return <FaHospital />;
-      case "personal":
-        return <FaClipboardList />;
-      case "vacation":
-        return <FaUmbrellaBeach />;
-      case "maternity":
-        return <FaBaby />;
-      case "paternity":
-        return <FaUserFriends />;
-      case "childcare":
-        return <FaChild />;
-      case "ordination":
-        return <FaPray />;
-      case "military":
-        return <FaMedal />;
-      default:
-        return <FaFileAlt />;
-    }
-  };
+  // getLeaveTypeName, getLeaveTypeIcon imported from utils/leaveTypeUtils
 
   const formatDate = (date) => {
     return new Date(date).toLocaleDateString("th-TH", {

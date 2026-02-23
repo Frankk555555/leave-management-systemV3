@@ -4,6 +4,7 @@ import { leaveRequestsAPI } from "../services/api";
 import Navbar from "../components/common/Navbar";
 import SEO, { SEOConfig } from "../components/common/SEO";
 import { DashboardSkeleton } from "../components/common/Skeleton";
+import { getLeaveTypeName, getLeaveTypeIcon } from "../utils/leaveTypeUtils";
 import "./Dashboard.css";
 import React from "react";
 
@@ -45,32 +46,7 @@ const Dashboard = () => {
     }
   };
 
-  const getLeaveTypeName = (type) => {
-    const types = {
-      sick: "ลาป่วย",
-      personal: "ลากิจส่วนตัว",
-      vacation: "ลาพักผ่อน",
-      maternity: "ลาคลอดบุตร",
-      paternity: "ลาช่วยภรรยาคลอด",
-      childcare: "ลาเลี้ยงดูบุตร",
-      ordination: "ลาอุปสมบท/ฮัจย์",
-      military: "ลาตรวจเลือก",
-    };
-    return types[type] || type;
-  };
-
-  const getLeaveTypeIcon = (type) => {
-    switch (type) {
-      case "sick":
-        return <FaHospital />;
-      case "personal":
-        return <FaClipboardList />;
-      case "vacation":
-        return <FaUmbrellaBeach />;
-      default:
-        return <FaClipboardList />;
-    }
-  };
+  // getLeaveTypeName, getLeaveTypeIcon imported from utils/leaveTypeUtils
 
   const formatDate = (date) => {
     return new Date(date).toLocaleDateString("th-TH", {

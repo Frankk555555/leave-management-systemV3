@@ -15,6 +15,26 @@ const generateToken = (id) => {
   });
 };
 
+/**
+ * Helper: สร้าง include สำหรับ leaveBalances (ปีปัจจุบัน + LeaveType)
+ */
+const getLeaveBalancesInclude = () => {
+  const currentYear = new Date().getFullYear();
+  return {
+    model: LeaveBalance,
+    as: "leaveBalances",
+    where: { year: currentYear },
+    required: false,
+    include: [
+      {
+        model: LeaveType,
+        as: "leaveType",
+        attributes: ["id", "name", "code", "defaultDays"],
+      },
+    ],
+  };
+};
+
 // Note: User registration is handled by admin only via userController.createUser
 // See routes/users.js and controllers/userController.js
 
@@ -29,10 +49,7 @@ const login = async (req, res) => {
     const user = await User.findOne({
       where: { email },
       include: [
-        {
-          model: LeaveBalance,
-          as: "leaveBalance",
-        },
+        getLeaveBalancesInclude(),
         {
           model: Department,
           as: "department",
@@ -42,6 +59,11 @@ const login = async (req, res) => {
 
     if (!user) {
       return res.status(401).json({ message: "อีเมลหรือรหัสผ่านไม่ถูกต้อง" });
+    }
+
+    // Check if user is active
+    if (!user.isActive) {
+      return res.status(401).json({ message: "บัญชีนี้ถูกระงับการใช้งาน" });
     }
 
     // Check password
@@ -58,7 +80,7 @@ const login = async (req, res) => {
         department: user.department,
         position: user.position,
         role: user.role,
-        leaveBalance: user.leaveBalance,
+        leaveBalances: user.leaveBalances,
         governmentDivision: user.governmentDivision,
         documentNumber: user.documentNumber,
         unit: user.unit,
@@ -89,10 +111,7 @@ const getMe = async (req, res) => {
           as: "supervisor",
           attributes: ["id", "firstName", "lastName", "email"],
         },
-        {
-          model: LeaveBalance,
-          as: "leaveBalance",
-        },
+        getLeaveBalancesInclude(),
         {
           model: Department,
           as: "department",

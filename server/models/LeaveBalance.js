@@ -1,5 +1,8 @@
 // ============================================
-// LeaveBalance Model (Sequelize)
+// LeaveBalance Model (Sequelize) - V2 Normalized
+// ============================================
+// เปลี่ยนจาก 1 แถว = 1 user (หลาย column)
+// เป็น 1 แถว = 1 user + 1 leave_type + 1 year
 // ============================================
 
 const { DataTypes } = require("sequelize");
@@ -9,67 +12,68 @@ const LeaveBalance = sequelize.define(
   "LeaveBalance",
   {
     id: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.INTEGER.UNSIGNED,
       primaryKey: true,
       autoIncrement: true,
     },
     userId: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.INTEGER.UNSIGNED,
       allowNull: false,
-      unique: true,
       field: "user_id",
     },
-    sick: {
-      type: DataTypes.INTEGER,
-      defaultValue: 60,
+    leaveTypeId: {
+      type: DataTypes.TINYINT.UNSIGNED,
+      allowNull: false,
+      field: "leave_type_id",
     },
-    personal: {
+    year: {
       type: DataTypes.INTEGER,
-      defaultValue: 45,
+      allowNull: false,
+      comment: "ปีงบประมาณ (พ.ศ. หรือ ค.ศ.)",
     },
-    vacation: {
-      type: DataTypes.INTEGER,
-      defaultValue: 10,
-      comment: "วันลาพักผ่อนรวม (สะสม + ปีปัจจุบัน) - ใช้สำหรับแสดงผล",
-    },
-    vacationAccrued: {
-      type: DataTypes.INTEGER,
+    totalDays: {
+      type: DataTypes.DECIMAL(4, 1),
+      allowNull: false,
       defaultValue: 0,
-      field: "vacation_accrued",
-      comment: "วันลาพักผ่อนสะสมจากปีก่อน",
+      field: "total_days",
+      comment: "จำนวนวันลาทั้งหมดที่ได้รับ",
     },
-    vacationCurrentYear: {
-      type: DataTypes.INTEGER,
-      defaultValue: 10,
-      field: "vacation_current_year",
-      comment: "วันลาพักผ่อนปีปัจจุบัน (10 วัน)",
+    usedDays: {
+      type: DataTypes.DECIMAL(4, 1),
+      allowNull: false,
+      defaultValue: 0,
+      field: "used_days",
+      comment: "จำนวนวันลาที่ใช้ไปแล้ว",
     },
-    maternity: {
-      type: DataTypes.INTEGER,
-      defaultValue: 90,
-    },
-    paternity: {
-      type: DataTypes.INTEGER,
-      defaultValue: 15,
-    },
-    childcare: {
-      type: DataTypes.INTEGER,
-      defaultValue: 150,
-    },
-    ordination: {
-      type: DataTypes.INTEGER,
-      defaultValue: 120,
-    },
-    military: {
-      type: DataTypes.INTEGER,
-      defaultValue: 60,
+    carriedOverDays: {
+      type: DataTypes.DECIMAL(4, 1),
+      allowNull: false,
+      defaultValue: 0,
+      field: "carried_over_days",
+      comment: "จำนวนวันลาสะสมจากปีก่อน",
     },
   },
   {
     tableName: "leave_balances",
     timestamps: true,
     underscored: true,
+    indexes: [
+      {
+        unique: true,
+        fields: ["user_id", "leave_type_id", "year"],
+        name: "uk_user_type_year",
+      },
+    ],
   }
 );
+
+// Virtual field: คำนวณวันลาคงเหลือ
+LeaveBalance.prototype.getRemainingDays = function () {
+  return (
+    parseFloat(this.totalDays) +
+    parseFloat(this.carriedOverDays) -
+    parseFloat(this.usedDays)
+  );
+};
 
 module.exports = LeaveBalance;

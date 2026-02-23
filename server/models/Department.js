@@ -9,23 +9,28 @@ const Department = sequelize.define(
   "Department",
   {
     id: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.SMALLINT.UNSIGNED,
       primaryKey: true,
       autoIncrement: true,
     },
     facultyId: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.SMALLINT.UNSIGNED,
       allowNull: true,
       field: "faculty_id",
       comment: "FK to faculties table",
     },
     name: {
-      type: DataTypes.STRING(150),
+      type: DataTypes.STRING(100),
       allowNull: false,
     },
     code: {
-      type: DataTypes.STRING(50),
+      type: DataTypes.STRING(20),
       unique: true,
+    },
+    isActive: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: true,
+      field: "is_active",
     },
   },
   {

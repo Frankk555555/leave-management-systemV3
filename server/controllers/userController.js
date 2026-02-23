@@ -1,5 +1,55 @@
-const { User, LeaveBalance, Department } = require("../models");
+const {
+  User,
+  LeaveBalance,
+  LeaveType,
+  Department,
+  LeaveRequest,
+  LeaveHistory,
+  Notification,
+} = require("../models");
 const { Op } = require("sequelize");
+
+/**
+ * Helper: สร้าง LeaveBalance สำหรับ user ใหม่ (normalized)
+ * สร้าง 1 row ต่อ 1 leave_type สำหรับปีปัจจุบัน
+ */
+const createLeaveBalancesForUser = async (userId) => {
+  const leaveTypes = await LeaveType.findAll({ where: { isActive: true } });
+  const currentYear = new Date().getFullYear();
+
+  await Promise.all(
+    leaveTypes.map((lt) =>
+      LeaveBalance.findOrCreate({
+        where: { userId, leaveTypeId: lt.id, year: currentYear },
+        defaults: {
+          totalDays: lt.defaultDays,
+          usedDays: 0,
+          carriedOverDays: 0,
+        },
+      })
+    )
+  );
+};
+
+/**
+ * Helper: สร้าง include สำหรับ leaveBalances (ปีปัจจุบัน + LeaveType)
+ */
+const getLeaveBalancesInclude = () => {
+  const currentYear = new Date().getFullYear();
+  return {
+    model: LeaveBalance,
+    as: "leaveBalances",
+    where: { year: currentYear },
+    required: false,
+    include: [
+      {
+        model: LeaveType,
+        as: "leaveType",
+        attributes: ["id", "name", "code", "defaultDays"],
+      },
+    ],
+  };
+};
 
 // @desc    Get all users
 // @route   GET /api/users
@@ -14,10 +64,7 @@ const getUsers = async (req, res) => {
           as: "supervisor",
           attributes: ["id", "firstName", "lastName", "email"],
         },
-        {
-          model: LeaveBalance,
-          as: "leaveBalance",
-        },
+        getLeaveBalancesInclude(),
         {
           model: Department,
           as: "department",
@@ -44,10 +91,7 @@ const getUserById = async (req, res) => {
           as: "supervisor",
           attributes: ["id", "firstName", "lastName", "email"],
         },
-        {
-          model: LeaveBalance,
-          as: "leaveBalance",
-        },
+        getLeaveBalancesInclude(),
         {
           model: Department,
           as: "department",
@@ -85,7 +129,6 @@ const createUser = async (req, res) => {
       documentNumber,
       unit,
       affiliation,
-      leaveBalance,
     } = req.body;
 
     // Handle empty strings for optional fields
@@ -120,31 +163,12 @@ const createUser = async (req, res) => {
       affiliation,
     });
 
-    // Create leave balance
-    await LeaveBalance.create({
-      userId: user.id,
-      sick: leaveBalance?.sick || 60,
-      personal: leaveBalance?.personal || 45,
-      vacation: leaveBalance?.vacation || 10,
-      maternity: leaveBalance?.maternity || 90,
-      paternity: leaveBalance?.paternity || 15,
-      childcare: leaveBalance?.childcare || 150,
-      ordination: leaveBalance?.ordination || 120,
-      military: leaveBalance?.military || 60,
-    });
+    // Create leave balances (normalized: 1 row per leave_type)
+    await createLeaveBalancesForUser(user.id);
 
     // Fetch user with associations
     const userWithBalance = await User.findByPk(user.id, {
-      include: [
-        {
-          model: LeaveBalance,
-          as: "leaveBalance",
-        },
-        {
-          model: Department,
-          as: "department",
-        },
-      ],
+      include: [getLeaveBalancesInclude(), { model: Department, as: "department" }],
     });
 
     res.status(201).json({
@@ -156,7 +180,7 @@ const createUser = async (req, res) => {
       department: userWithBalance.department,
       position: user.position,
       role: user.role,
-      leaveBalance: userWithBalance.leaveBalance,
+      leaveBalances: userWithBalance.leaveBalances,
     });
   } catch (error) {
     console.error(error);
@@ -170,12 +194,7 @@ const createUser = async (req, res) => {
 const updateUser = async (req, res) => {
   try {
     const user = await User.findByPk(req.params.id, {
-      include: [
-        {
-          model: LeaveBalance,
-          as: "leaveBalance",
-        },
-      ],
+      include: [getLeaveBalancesInclude()],
     });
 
     if (!user) {
@@ -195,7 +214,7 @@ const updateUser = async (req, res) => {
       documentNumber,
       unit,
       affiliation,
-      leaveBalance,
+      leaveBalances,
     } = req.body;
 
     // Handle empty strings for optional fields
@@ -225,23 +244,26 @@ const updateUser = async (req, res) => {
       affiliation: affiliation !== undefined ? affiliation : user.affiliation,
     });
 
-    // Update leave balance if provided
-    if (leaveBalance && user.leaveBalance) {
-      await user.leaveBalance.update(leaveBalance);
+    // Update leave balances if provided (normalized)
+    if (leaveBalances && Array.isArray(leaveBalances)) {
+      const currentYear = new Date().getFullYear();
+      for (const lb of leaveBalances) {
+        if (lb.leaveTypeId) {
+          await LeaveBalance.upsert({
+            userId: user.id,
+            leaveTypeId: lb.leaveTypeId,
+            year: lb.year || currentYear,
+            totalDays: lb.totalDays,
+            usedDays: lb.usedDays || 0,
+            carriedOverDays: lb.carriedOverDays || 0,
+          });
+        }
+      }
     }
 
     // Fetch updated user with associations
     const updatedUser = await User.findByPk(user.id, {
-      include: [
-        {
-          model: LeaveBalance,
-          as: "leaveBalance",
-        },
-        {
-          model: Department,
-          as: "department",
-        },
-      ],
+      include: [getLeaveBalancesInclude(), { model: Department, as: "department" }],
     });
 
     res.json(updatedUser);
@@ -262,18 +284,20 @@ const deleteUser = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // Import models for cascade delete
-    const { LeaveBalance, LeaveRequest, Notification } = require("../models");
-
-    // Clear approved_by references in leave_requests (for old approval data)
+    // Clear approved_by / confirmed_by references
     await LeaveRequest.update(
       { approvedBy: null },
       { where: { approvedBy: user.id } }
     );
+    await LeaveRequest.update(
+      { confirmedBy: null },
+      { where: { confirmedBy: user.id } }
+    );
 
-    // Delete related records first
+    // Delete related records (CASCADE handles most, but be explicit)
     await LeaveBalance.destroy({ where: { userId: user.id } });
     await Notification.destroy({ where: { userId: user.id } });
+    await LeaveHistory.destroy({ where: { actionBy: user.id } });
     await LeaveRequest.destroy({ where: { userId: user.id } });
 
     // Update supervisor references
@@ -297,9 +321,8 @@ const getSupervisors = async (req, res) => {
   try {
     const supervisors = await User.findAll({
       where: {
-        role: {
-          [Op.in]: ["head", "admin"],
-        },
+        role: { [Op.in]: ["head", "admin"] },
+        isActive: true,
       },
       attributes: [
         "id",
@@ -309,12 +332,7 @@ const getSupervisors = async (req, res) => {
         "email",
         "departmentId",
       ],
-      include: [
-        {
-          model: Department,
-          as: "department",
-        },
-      ],
+      include: [{ model: Department, as: "department" }],
     });
     res.json(supervisors);
   } catch (error) {
@@ -382,7 +400,7 @@ const updateProfile = async (req, res) => {
     const updatedUser = await User.findByPk(req.user.id, {
       attributes: { exclude: ["password"] },
       include: [
-        { model: LeaveBalance, as: "leaveBalance" },
+        getLeaveBalancesInclude(),
         { model: Department, as: "department" },
       ],
     });
@@ -625,18 +643,8 @@ const importUsers = async (req, res) => {
           supervisorId: rowData.supervisorId || null,
         });
 
-        // Create leave balance with default values
-        await LeaveBalance.create({
-          userId: user.id,
-          sick: 60,
-          personal: 45,
-          vacation: 10,
-          maternity: 90,
-          paternity: 15,
-          childcare: 150,
-          ordination: 120,
-          military: 60,
-        });
+        // Create leave balances (normalized)
+        await createLeaveBalancesForUser(user.id);
 
         results.success.push({
           row: rowNumber,

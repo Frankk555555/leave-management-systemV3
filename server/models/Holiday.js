@@ -9,20 +9,31 @@ const Holiday = sequelize.define(
   "Holiday",
   {
     id: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.SMALLINT.UNSIGNED,
       primaryKey: true,
       autoIncrement: true,
     },
     name: {
-      type: DataTypes.STRING(200),
+      type: DataTypes.STRING(120),
       allowNull: false,
     },
     date: {
       type: DataTypes.DATEONLY,
       allowNull: false,
+      unique: true,
+    },
+    year: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      comment: "ปีของวันหยุด (สำหรับ filter)",
+    },
+    type: {
+      type: DataTypes.ENUM("national", "special", "compensatory"),
+      defaultValue: "national",
+      comment: "national=วันหยุดราชการ, special=วันหยุดพิเศษ, compensatory=วันชดเชย",
     },
     description: {
-      type: DataTypes.TEXT,
+      type: DataTypes.STRING(255),
     },
   },
   {

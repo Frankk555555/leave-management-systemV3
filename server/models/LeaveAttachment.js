@@ -9,21 +9,28 @@ const LeaveAttachment = sequelize.define(
   "LeaveAttachment",
   {
     id: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.INTEGER.UNSIGNED,
       primaryKey: true,
       autoIncrement: true,
     },
     leaveRequestId: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.INTEGER.UNSIGNED,
       allowNull: false,
       field: "leave_request_id",
     },
     fileName: {
-      type: DataTypes.STRING(255),
+      type: DataTypes.STRING(100),
+      allowNull: false,
       field: "file_name",
     },
+    originalName: {
+      type: DataTypes.STRING(150),
+      field: "original_name",
+      comment: "ชื่อไฟล์ต้นฉบับ (ภาษาไทย)",
+    },
     filePath: {
-      type: DataTypes.STRING(500),
+      type: DataTypes.STRING(255),
+      allowNull: false,
       field: "file_path",
     },
     fileType: {
@@ -31,7 +38,7 @@ const LeaveAttachment = sequelize.define(
       field: "file_type",
     },
     fileSize: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.INTEGER.UNSIGNED,
       field: "file_size",
     },
   },

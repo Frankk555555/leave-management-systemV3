@@ -3,9 +3,11 @@ const {
   User,
   LeaveBalance,
   LeaveAttachment,
+  LeaveType,
   Department,
   Faculty,
   Notification,
+  LeaveHistory,
 } = require("../models");
 const { Op } = require("sequelize");
 const {
@@ -19,7 +21,8 @@ const {
 // @access  Private
 const createLeaveRequest = async (req, res) => {
   try {
-    const {
+    let {
+      leaveTypeId,
       leaveType,
       startDate,
       endDate,
@@ -33,10 +36,23 @@ const createLeaveRequest = async (req, res) => {
       timeSlot,
     } = req.body;
 
+    // Backward compat: ถ้า frontend ส่ง leaveType (code) มาแทน leaveTypeId
+    if (!leaveTypeId && leaveType) {
+      const lt = await LeaveType.findOne({ where: { code: leaveType } });
+      if (!lt) {
+        return res.status(400).json({ message: `ไม่พบประเภทลา: ${leaveType}` });
+      }
+      leaveTypeId = lt.id;
+    }
+
+    if (!leaveTypeId) {
+      return res.status(400).json({ message: "กรุณาระบุประเภทการลา" });
+    }
+
     // Validate leave request with business rules
     const validation = await validateLeaveRequest({
       userId: req.user.id,
-      leaveType,
+      leaveTypeId,
       startDate,
       endDate,
       childBirthDate,
@@ -53,10 +69,10 @@ const createLeaveRequest = async (req, res) => {
     // Determine if paid leave
     const isPaidLeave = validation.isPaidLeave !== false;
 
-    // Create leave request - auto save (no approval needed)
+    // Create leave request
     const leaveRequest = await LeaveRequest.create({
       userId: req.user.id,
-      leaveType,
+      leaveTypeId,
       startDate,
       endDate,
       totalDays: validation.totalDays,
@@ -66,12 +82,22 @@ const createLeaveRequest = async (req, res) => {
       contactPhone,
     });
 
+    // Create audit trail
+    await LeaveHistory.create({
+      leaveRequestId: leaveRequest.id,
+      action: "created",
+      actionBy: req.user.id,
+      oldStatus: null,
+      newStatus: "pending",
+    });
+
     // Handle file uploads (create attachments)
     if (req.files && req.files.length > 0) {
       const attachmentPromises = req.files.map((file) =>
         LeaveAttachment.create({
           leaveRequestId: leaveRequest.id,
-          fileName: file.originalname,
+          fileName: file.filename || file.originalname,
+          originalName: file.originalname,
           filePath: "/" + file.path.replace(/\\/g, "/"),
           fileType: file.mimetype,
           fileSize: file.size,
@@ -88,14 +114,17 @@ const createLeaveRequest = async (req, res) => {
           as: "user",
           attributes: ["id", "firstName", "lastName", "email"],
         },
+        { model: LeaveType, as: "leaveType" },
         { model: LeaveAttachment, as: "attachments" },
       ],
     });
 
     // Notify all admins about new leave request
     try {
-      const admins = await User.findAll({ where: { role: "admin" } });
-      const leaveTypeName = getLeaveTypeName(leaveType);
+      const admins = await User.findAll({
+        where: { role: "admin", isActive: true },
+      });
+      const leaveTypeName = createdRequest.leaveType?.name || "ลา";
       const notificationPromises = admins.map((admin) =>
         Notification.create({
           userId: admin.id,
@@ -130,10 +159,8 @@ const getMyLeaveRequests = async (req, res) => {
           as: "approver",
           attributes: ["id", "firstName", "lastName"],
         },
-        {
-          model: LeaveAttachment,
-          as: "attachments",
-        },
+        { model: LeaveType, as: "leaveType" },
+        { model: LeaveAttachment, as: "attachments" },
       ],
       order: [["createdAt", "DESC"]],
     });
@@ -186,6 +213,7 @@ const getAllLeaveRequests = async (req, res) => {
           as: "approver",
           attributes: ["id", "firstName", "lastName"],
         },
+        { model: LeaveType, as: "leaveType" },
       ],
       order: [["createdAt", "DESC"]],
     });
@@ -227,9 +255,19 @@ const getLeaveRequestById = async (req, res) => {
           as: "approver",
           attributes: ["id", "firstName", "lastName"],
         },
+        { model: LeaveType, as: "leaveType" },
+        { model: LeaveAttachment, as: "attachments" },
         {
-          model: LeaveAttachment,
-          as: "attachments",
+          model: LeaveHistory,
+          as: "history",
+          include: [
+            {
+              model: User,
+              as: "actor",
+              attributes: ["id", "firstName", "lastName"],
+            },
+          ],
+          order: [["createdAt", "ASC"]],
         },
       ],
     });
@@ -245,22 +283,7 @@ const getLeaveRequestById = async (req, res) => {
   }
 };
 
-// Helper function to get leave type name in Thai
-const getLeaveTypeName = (type) => {
-  const types = {
-    sick: "ลาป่วย",
-    personal: "ลากิจส่วนตัว",
-    vacation: "ลาพักผ่อน",
-    maternity: "ลาคลอดบุตร",
-    paternity: "ลาช่วยภรรยาคลอด",
-    childcare: "ลากิจเลี้ยงดูบุตร",
-    ordination: "ลาอุปสมบท/ฮัจย์",
-    military: "ลาตรวจเลือก/เตรียมพล",
-  };
-  return types[type] || type;
-};
-
-// @desc    Cancel leave request
+// @desc    Cancel leave request (soft cancel)
 // @route   PUT /api/leave-requests/:id/cancel
 // @access  Private
 const cancelLeaveRequest = async (req, res) => {
@@ -278,9 +301,26 @@ const cancelLeaveRequest = async (req, res) => {
         .json({ message: "Not authorized to cancel this request" });
     }
 
-    await leaveRequest.destroy();
+    const oldStatus = leaveRequest.status;
 
-    res.json({ message: "ลบบันทึกการลาเรียบร้อยแล้ว" });
+    // Soft cancel instead of destroy
+    await leaveRequest.update({
+      status: "cancelled",
+      cancelledAt: new Date(),
+      cancelReason: req.body.reason || null,
+    });
+
+    // Audit trail
+    await LeaveHistory.create({
+      leaveRequestId: leaveRequest.id,
+      action: "cancelled",
+      actionBy: req.user.id,
+      oldStatus,
+      newStatus: "cancelled",
+      note: req.body.reason || null,
+    });
+
+    res.json({ message: "ยกเลิกการลาเรียบร้อยแล้ว", leaveRequest });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server error", error: error.message });
@@ -305,7 +345,13 @@ const updateLeaveRequest = async (req, res) => {
         .json({ message: "Not authorized to update this request" });
     }
 
-    const { leaveType, startDate, endDate, reason } = req.body;
+    let { leaveTypeId, leaveType, startDate, endDate, reason } = req.body;
+
+    // Backward compat: ถ้า frontend ส่ง leaveType (code) มาแทน leaveTypeId
+    if (!leaveTypeId && leaveType) {
+      const lt = await LeaveType.findOne({ where: { code: leaveType } });
+      if (lt) leaveTypeId = lt.id;
+    }
 
     // Calculate total days
     const start = new Date(startDate);
@@ -313,23 +359,42 @@ const updateLeaveRequest = async (req, res) => {
     const diffTime = Math.abs(end - start);
     const totalDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
 
-    // Check leave balance
-    const userBalance = await LeaveBalance.findOne({
-      where: { userId: req.user.id },
+    // Check leave balance (normalized)
+    const currentYear = new Date().getFullYear();
+    const targetTypeId = leaveTypeId || leaveRequest.leaveTypeId;
+    const balance = await LeaveBalance.findOne({
+      where: {
+        userId: req.user.id,
+        leaveTypeId: targetTypeId,
+        year: currentYear,
+      },
     });
 
-    if (userBalance && userBalance[leaveType] < totalDays) {
-      return res.status(400).json({
-        message: `Insufficient leave balance. You have ${userBalance[leaveType]} days remaining.`,
-      });
+    if (balance) {
+      const remaining = balance.getRemainingDays();
+      if (remaining < totalDays) {
+        return res.status(400).json({
+          message: `วันลาคงเหลือไม่เพียงพอ เหลือ ${remaining} วัน`,
+        });
+      }
     }
 
     await leaveRequest.update({
-      leaveType,
+      leaveTypeId: targetTypeId,
       startDate,
       endDate,
       totalDays,
       reason,
+    });
+
+    // Audit trail
+    await LeaveHistory.create({
+      leaveRequestId: leaveRequest.id,
+      action: "edited",
+      actionBy: req.user.id,
+      oldStatus: leaveRequest.status,
+      newStatus: leaveRequest.status,
+      note: "แก้ไขข้อมูลการลา",
     });
 
     res.json({ message: "อัปเดตบันทึกการลาเรียบร้อยแล้ว", leaveRequest });
@@ -393,6 +458,7 @@ const getTeamLeaveRequests = async (req, res) => {
             },
           ],
         },
+        { model: LeaveType, as: "leaveType" },
       ],
       attributes: {
         exclude: [
@@ -425,6 +491,7 @@ const confirmLeaveRequest = async (req, res) => {
           as: "user",
           attributes: ["id", "firstName", "lastName"],
         },
+        { model: LeaveType, as: "leaveType" },
       ],
     });
 
@@ -436,6 +503,8 @@ const confirmLeaveRequest = async (req, res) => {
       return res.status(400).json({ message: "ใบลานี้ถูกยืนยันแล้ว" });
     }
 
+    const oldStatus = leaveRequest.status;
+
     // Update status to confirmed
     await leaveRequest.update({
       status: "confirmed",
@@ -444,56 +513,43 @@ const confirmLeaveRequest = async (req, res) => {
       confirmedNote: note || null,
     });
 
-    // Deduct leave balance from user
+    // Deduct leave balance (normalized)
     try {
-      const userBalance = await LeaveBalance.findOne({
-        where: { userId: leaveRequest.userId },
+      const currentYear = new Date().getFullYear();
+      const balance = await LeaveBalance.findOne({
+        where: {
+          userId: leaveRequest.userId,
+          leaveTypeId: leaveRequest.leaveTypeId,
+          year: currentYear,
+        },
       });
 
-      if (userBalance) {
-        const leaveType = leaveRequest.leaveType;
-        const totalDays = leaveRequest.totalDays;
-
-        // Handle vacation specially (has accrued and current year)
-        if (leaveType === "vacation") {
-          // First deduct from current year, then from accrued
-          let remaining = totalDays;
-          const currentYear = userBalance.vacationCurrentYear || 0;
-          const accrued = userBalance.vacationAccrued || 0;
-
-          if (remaining <= currentYear) {
-            await userBalance.update({
-              vacationCurrentYear: currentYear - remaining,
-              vacation: currentYear - remaining + accrued,
-            });
-          } else {
-            // Deduct all current year first, then from accrued
-            const fromAccrued = remaining - currentYear;
-            await userBalance.update({
-              vacationCurrentYear: 0,
-              vacationAccrued: Math.max(0, accrued - fromAccrued),
-              vacation: Math.max(0, accrued - fromAccrued),
-            });
-          }
-        } else if (userBalance[leaveType] !== undefined) {
-          // For other leave types, just deduct directly
-          const currentBalance = userBalance[leaveType] || 0;
-          await userBalance.update({
-            [leaveType]: Math.max(0, currentBalance - totalDays),
-          });
-        }
+      if (balance) {
+        const totalDays = parseFloat(leaveRequest.totalDays);
+        await balance.update({
+          usedDays: parseFloat(balance.usedDays) + totalDays,
+        });
 
         console.log(
-          `Deducted ${totalDays} days of ${leaveType} from user ${leaveRequest.userId}`,
+          `Deducted ${totalDays} days of type ${leaveRequest.leaveTypeId} from user ${leaveRequest.userId}`,
         );
       }
     } catch (balanceError) {
       console.error("Error deducting leave balance:", balanceError);
-      // Don't fail the whole request, just log the error
     }
 
+    // Audit trail
+    await LeaveHistory.create({
+      leaveRequestId: leaveRequest.id,
+      action: "confirmed",
+      actionBy: req.user.id,
+      oldStatus,
+      newStatus: "confirmed",
+      note: note || null,
+    });
+
     // Send notification to the user
-    const leaveTypeName = getLeaveTypeName(leaveRequest.leaveType);
+    const leaveTypeName = leaveRequest.leaveType?.name || "ลา";
     await Notification.create({
       userId: leaveRequest.userId,
       type: "confirmation",

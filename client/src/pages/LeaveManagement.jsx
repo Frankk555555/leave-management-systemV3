@@ -3,6 +3,7 @@ import Navbar from "../components/common/Navbar";
 import Loading from "../components/common/Loading";
 import { useToast } from "../components/common/Toast";
 import { previewLeavePDF } from "../utils/generateLeavePDF";
+import { getLeaveTypeName, getLeaveTypeCode } from "../utils/leaveTypeUtils";
 import config from "../config";
 import {
   FaCheck,
@@ -117,14 +118,15 @@ const LeaveManagement = () => {
 
     // รวมจำนวนวันลาที่ผ่านมา
     userConfirmedRequests.forEach((r) => {
-      if (leaveStats[r.leaveType]) {
-        leaveStats[r.leaveType].used += r.totalDays || 0;
+      const code = getLeaveTypeCode(r.leaveType);
+      if (leaveStats[code]) {
+        leaveStats[code].used += r.totalDays || 0;
       }
     });
 
     // Prepare leave data
     const leaveData = {
-      leaveType: request.leaveType,
+      leaveType: getLeaveTypeCode(request.leaveType),
       startDate: request.startDate,
       endDate: request.endDate,
       totalDays: request.totalDays,
@@ -149,19 +151,7 @@ const LeaveManagement = () => {
     await previewLeavePDF(leaveData, userData);
   };
 
-  const getLeaveTypeName = (type) => {
-    const types = {
-      sick: "ลาป่วย",
-      personal: "ลากิจส่วนตัว",
-      vacation: "ลาพักผ่อน",
-      maternity: "ลาคลอดบุตร",
-      paternity: "ลาช่วยภรรยาคลอด",
-      childcare: "ลาเลี้ยงดูบุตร",
-      ordination: "ลาอุปสมบท",
-      military: "ลาตรวจเลือก",
-    };
-    return types[type] || type;
-  };
+  // getLeaveTypeName imported from utils/leaveTypeUtils
 
   const formatDate = (date) => {
     return new Date(date).toLocaleDateString("th-TH", {

@@ -20,7 +20,7 @@ const getLeaveStatistics = async (req, res) => {
     const startDate = new Date(currentYear, 0, 1);
     const endDate = new Date(currentYear, 11, 31, 23, 59, 59);
 
-    // Get all leave requests for the year
+    // Get all leave requests for the year with LeaveType
     const leaveRequests = await LeaveRequest.findAll({
       where: {
         startDate: {
@@ -40,19 +40,25 @@ const getLeaveStatistics = async (req, res) => {
             },
           ],
         },
+        {
+          model: LeaveType,
+          as: "leaveType",
+          attributes: ["id", "name", "code"],
+        },
       ],
     });
 
-    // Statistics by type
+    // Statistics by type (use leaveType.code as key)
     const byType = leaveRequests.reduce((acc, req) => {
-      acc[req.leaveType] = (acc[req.leaveType] || 0) + req.totalDays;
+      const typeCode = req.leaveType?.code || "unknown";
+      acc[typeCode] = (acc[typeCode] || 0) + parseFloat(req.totalDays);
       return acc;
     }, {});
 
     // Statistics by department
     const byDepartment = leaveRequests.reduce((acc, req) => {
       const dept = req.user?.department?.name || "ไม่ระบุ";
-      acc[dept] = (acc[dept] || 0) + req.totalDays;
+      acc[dept] = (acc[dept] || 0) + parseFloat(req.totalDays);
       return acc;
     }, {});
 
@@ -60,7 +66,7 @@ const getLeaveStatistics = async (req, res) => {
     const byMonth = Array(12).fill(0);
     leaveRequests.forEach((req) => {
       const month = new Date(req.startDate).getMonth();
-      byMonth[month] += req.totalDays;
+      byMonth[month] += parseFloat(req.totalDays);
     });
 
     // Statistics by status
@@ -70,12 +76,15 @@ const getLeaveStatistics = async (req, res) => {
     }, {});
 
     // Total employees
-    const totalEmployees = await User.count();
+    const totalEmployees = await User.count({ where: { isActive: true } });
 
     res.json({
       year: currentYear,
       totalRequests: leaveRequests.length,
-      totalDays: leaveRequests.reduce((sum, r) => sum + r.totalDays, 0),
+      totalDays: leaveRequests.reduce(
+        (sum, r) => sum + parseFloat(r.totalDays),
+        0
+      ),
       totalEmployees,
       byType,
       byDepartment,
@@ -126,6 +135,11 @@ const exportToExcel = async (req, res) => {
           as: "approver",
           attributes: ["firstName", "lastName"],
         },
+        {
+          model: LeaveType,
+          as: "leaveType",
+          attributes: ["name", "code"],
+        },
       ],
       order: [["startDate", "DESC"]],
     });
@@ -138,7 +152,7 @@ const exportToExcel = async (req, res) => {
       { header: "รหัสพนักงาน", key: "employeeId", width: 15 },
       { header: "ชื่อ-นามสกุล", key: "employeeName", width: 25 },
       { header: "แผนก", key: "department", width: 20 },
-      { header: "ประเภทการลา", key: "leaveType", width: 15 },
+      { header: "ประเภทการลา", key: "leaveTypeName", width: 15 },
       { header: "วันที่เริ่ม", key: "startDate", width: 15 },
       { header: "วันที่สิ้นสุด", key: "endDate", width: 15 },
       { header: "จำนวนวัน", key: "totalDays", width: 12 },
@@ -156,21 +170,12 @@ const exportToExcel = async (req, res) => {
     };
     worksheet.getRow(1).font = { color: { argb: "FFFFFF" }, bold: true };
 
-    // Add data
-    const leaveTypeNames = {
-      sick: "ลาป่วย",
-      personal: "ลากิจส่วนตัว",
-      vacation: "ลาพักผ่อน",
-      maternity: "ลาคลอดบุตร",
-      paternity: "ลาช่วยภรรยาคลอด",
-      childcare: "ลาเลี้ยงดูบุตร",
-      ordination: "ลาอุปสมบท/ฮัจย์",
-      military: "ลาตรวจเลือก",
-    };
     const statusNames = {
       pending: "รออนุมัติ",
       approved: "อนุมัติแล้ว",
       rejected: "ไม่อนุมัติ",
+      confirmed: "ยืนยันแล้ว",
+      cancelled: "ยกเลิก",
     };
 
     leaveRequests.forEach((request) => {
@@ -180,7 +185,7 @@ const exportToExcel = async (req, res) => {
           request.user?.lastName || ""
         }`,
         department: request.user?.department?.name || "",
-        leaveType: leaveTypeNames[request.leaveType] || request.leaveType,
+        leaveTypeName: request.leaveType?.name || "",
         startDate: new Date(request.startDate).toLocaleDateString("th-TH"),
         endDate: new Date(request.endDate).toLocaleDateString("th-TH"),
         totalDays: request.totalDays,
@@ -242,6 +247,11 @@ const exportToPDF = async (req, res) => {
             },
           ],
         },
+        {
+          model: LeaveType,
+          as: "leaveType",
+          attributes: ["name", "code"],
+        },
       ],
       order: [["startDate", "DESC"]],
     });
@@ -287,27 +297,16 @@ const exportToPDF = async (req, res) => {
     doc.text(`ไม่อนุมัติ: ${stats.rejected}`);
     doc.moveDown(2);
 
-    // Table header
-    const leaveTypeNames = {
-      sick: "ลาป่วย",
-      personal: "ลากิจส่วนตัว",
-      vacation: "ลาพักผ่อน",
-      maternity: "ลาคลอดบุตร",
-      paternity: "ลาช่วยภรรยาคลอด",
-      childcare: "ลาเลี้ยงดูบุตร",
-      ordination: "ลาอุปสมบท/ฮัจย์",
-      military: "ลาตรวจเลือก",
-    };
-
     doc.fontSize(14).text("รายละเอียด", { underline: true });
     doc.moveDown();
 
     leaveRequests.slice(0, 50).forEach((request, index) => {
       doc.fontSize(10);
+      const leaveTypeName = request.leaveType?.name || "";
       doc.text(
         `${index + 1}. ${request.user?.firstName || ""} ${
           request.user?.lastName || ""
-        } - ${leaveTypeNames[request.leaveType] || request.leaveType}`
+        } - ${leaveTypeName}`
       );
       doc.text(
         `   วันที่: ${new Date(request.startDate).toLocaleDateString(
@@ -331,62 +330,57 @@ const exportToPDF = async (req, res) => {
 // @access  Private/Admin
 const resetYearlyLeaveBalance = async (req, res) => {
   try {
-    // Get all users with their leave balance and start date
-    const users = await User.findAll({
-      include: [{ model: LeaveBalance, as: "leaveBalance" }],
-    });
+    const currentYear = new Date().getFullYear();
+    const newYear = currentYear + 1;
+
+    const users = await User.findAll({ where: { isActive: true } });
+    const leaveTypes = await LeaveType.findAll({ where: { isActive: true } });
 
     const results = [];
-    const today = new Date();
 
     for (const user of users) {
-      if (!user.leaveBalance) continue;
-
       // Calculate years of service
       let yearsOfService = 0;
       if (user.startDate) {
         const startDate = new Date(user.startDate);
         yearsOfService = Math.floor(
-          (today - startDate) / (365.25 * 24 * 60 * 60 * 1000)
+          (new Date() - startDate) / (365.25 * 24 * 60 * 60 * 1000)
         );
       }
 
-      // Max vacation days based on years of service
-      // < 10 years: max 20 days (10 current + 10 accrued)
-      // >= 10 years: max 30 days (10 current + 20 accrued)
-      const maxTotal = yearsOfService >= 10 ? 30 : 20;
-      const maxAccrued = maxTotal - 10; // 10 or 20
+      const maxAccrued = yearsOfService >= 10 ? 20 : 10;
+      let newAccrued = 0;
+      let newVacation = 0;
 
-      // Calculate vacation days remaining this year
-      const vacationRemaining = user.leaveBalance.vacation;
+      for (const lt of leaveTypes) {
+        // Get current year balance
+        const currentBalance = await LeaveBalance.findOne({
+          where: { userId: user.id, leaveTypeId: lt.id, year: currentYear },
+        });
 
-      // Calculate new accrued (unused vacation from this year + previous accrued)
-      // But cap at max allowed
-      let newAccrued = Math.min(vacationRemaining, maxAccrued);
+        let carriedOver = 0;
+        if (currentBalance && lt.code === "vacation") {
+          const remaining = currentBalance.getRemainingDays();
+          carriedOver = Math.min(remaining, maxAccrued);
+          newAccrued = carriedOver;
+          newVacation = carriedOver + lt.defaultDays;
+        }
 
-      // New vacation = accrued + 10 (current year allocation)
-      const newVacation = newAccrued + 10;
-
-      // Update leave balance
-      await user.leaveBalance.update({
-        sick: 60,
-        personal: 45,
-        vacation: newVacation,
-        vacationAccrued: newAccrued,
-        vacationCurrentYear: 10,
-        maternity: 90,
-        paternity: 15,
-        childcare: 150,
-        ordination: 120,
-        military: 60,
-      });
+        // Create balance for new year
+        await LeaveBalance.findOrCreate({
+          where: { userId: user.id, leaveTypeId: lt.id, year: newYear },
+          defaults: {
+            totalDays: lt.defaultDays,
+            usedDays: 0,
+            carriedOverDays: carriedOver,
+          },
+        });
+      }
 
       results.push({
         employeeId: user.employeeId,
         name: `${user.firstName} ${user.lastName}`,
         yearsOfService,
-        maxTotal,
-        previousRemaining: vacationRemaining,
         newAccrued,
         newVacation,
       });
@@ -449,6 +443,11 @@ const getAllRequests = async (req, res) => {
         model: User,
         as: "approver",
         attributes: ["id", "firstName", "lastName"],
+      },
+      {
+        model: LeaveType,
+        as: "leaveType",
+        attributes: ["id", "name", "code"],
       },
     ];
 

@@ -1,4 +1,10 @@
-const { LeaveRequest, User, Holiday, Department } = require("../models");
+const {
+  LeaveRequest,
+  User,
+  Holiday,
+  Department,
+  LeaveType,
+} = require("../models");
 const { Op } = require("sequelize");
 
 // @desc    Get weekly leave report for n8n
@@ -32,7 +38,7 @@ const getWeeklyReport = async (req, res) => {
       endDate.setHours(23, 59, 59, 999);
     }
 
-    // Get leave requests for the period
+    // Get leave requests for the period with LeaveType
     const leaveRequests = await LeaveRequest.findAll({
       where: {
         [Op.or]: [
@@ -72,6 +78,11 @@ const getWeeklyReport = async (req, res) => {
           as: "approver",
           attributes: ["id", "firstName", "lastName"],
         },
+        {
+          model: LeaveType,
+          as: "leaveType",
+          attributes: ["id", "name", "code"],
+        },
       ],
     });
 
@@ -84,21 +95,12 @@ const getWeeklyReport = async (req, res) => {
       cancelled: leaveRequests.filter((r) => r.status === "cancelled").length,
     };
 
-    // Count by leave type
-    const byType = {
-      sick: leaveRequests.filter((r) => r.leaveType === "sick").length,
-      personal: leaveRequests.filter((r) => r.leaveType === "personal").length,
-      vacation: leaveRequests.filter((r) => r.leaveType === "vacation").length,
-      maternity: leaveRequests.filter((r) => r.leaveType === "maternity")
-        .length,
-      paternity: leaveRequests.filter((r) => r.leaveType === "paternity")
-        .length,
-      childcare: leaveRequests.filter((r) => r.leaveType === "childcare")
-        .length,
-      ordination: leaveRequests.filter((r) => r.leaveType === "ordination")
-        .length,
-      military: leaveRequests.filter((r) => r.leaveType === "military").length,
-    };
+    // Count by leave type (using code from relation)
+    const byType = {};
+    leaveRequests.forEach((r) => {
+      const code = r.leaveType?.code || "unknown";
+      byType[code] = (byType[code] || 0) + 1;
+    });
 
     // Count by department
     const byDepartment = {};
@@ -119,7 +121,7 @@ const getWeeklyReport = async (req, res) => {
     // Total days on leave
     const totalLeaveDays = leaveRequests
       .filter((r) => r.status === "approved")
-      .reduce((sum, r) => sum + r.totalDays, 0);
+      .reduce((sum, r) => sum + parseFloat(r.totalDays), 0);
 
     // Format for AI summary
     const summaryData = {
@@ -146,22 +148,7 @@ const getWeeklyReport = async (req, res) => {
       leaveDetails: leaveRequests.map((r) => ({
         employee: `${r.user?.firstName || ""} ${r.user?.lastName || ""}`,
         department: r.user?.department?.name || "ไม่ระบุ",
-        type:
-          r.leaveType === "sick"
-            ? "ลาป่วย"
-            : r.leaveType === "personal"
-            ? "ลากิจ"
-            : r.leaveType === "vacation"
-            ? "ลาพักร้อน"
-            : r.leaveType === "maternity"
-            ? "ลาคลอดบุตร"
-            : r.leaveType === "paternity"
-            ? "ลาช่วยภรรยาคลอด"
-            : r.leaveType === "childcare"
-            ? "ลาเลี้ยงดูบุตร"
-            : r.leaveType === "ordination"
-            ? "ลาอุปสมบท/ฮัจย์"
-            : "ลาตรวจเลือก",
+        type: r.leaveType?.name || "ไม่ระบุ",
         startDate: new Date(r.startDate).toLocaleDateString("th-TH"),
         endDate: new Date(r.endDate).toLocaleDateString("th-TH"),
         totalDays: r.totalDays,
@@ -172,6 +159,8 @@ const getWeeklyReport = async (req, res) => {
             ? "รออนุมัติ"
             : r.status === "rejected"
             ? "ปฏิเสธ"
+            : r.status === "confirmed"
+            ? "ยืนยันแล้ว"
             : "ยกเลิก",
         reason: r.reason,
       })),
@@ -200,14 +189,10 @@ const generateTextSummary = (stats, byType, byDepartment, totalDays, total) => {
   summary += `- รวมวันลา (อนุมัติ): ${totalDays} วัน\n\n`;
 
   summary += `🏥 แยกตามประเภท:\n`;
-  summary += `- ลาป่วย: ${byType.sick} รายการ\n`;
-  summary += `- ลากิจส่วนตัว: ${byType.personal} รายการ\n`;
-  summary += `- ลาพักผ่อน: ${byType.vacation} รายการ\n`;
-  summary += `- ลาคลอดบุตร: ${byType.maternity} รายการ\n`;
-  summary += `- ลาช่วยภรรยาคลอด: ${byType.paternity} รายการ\n`;
-  summary += `- ลาเลี้ยงดูบุตร: ${byType.childcare} รายการ\n`;
-  summary += `- ลาอุปสมบท/ฮัจย์: ${byType.ordination} รายการ\n`;
-  summary += `- ลาตรวจเลือก: ${byType.military} รายการ\n\n`;
+  Object.entries(byType).forEach(([code, count]) => {
+    summary += `- ${code}: ${count} รายการ\n`;
+  });
+  summary += `\n`;
 
   summary += `🏢 แยกตามแผนก:\n`;
   Object.entries(byDepartment).forEach(([dept, count]) => {

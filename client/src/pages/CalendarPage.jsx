@@ -3,6 +3,7 @@ import Calendar from "react-calendar";
 import { holidaysAPI, leaveRequestsAPI } from "../services/api";
 import Navbar from "../components/common/Navbar";
 import Loading from "../components/common/Loading";
+import { getLeaveTypeCode } from "../utils/leaveTypeUtils";
 import "react-calendar/dist/Calendar.css";
 import "./CalendarPage.css";
 
@@ -104,13 +105,15 @@ const CalendarPage = () => {
   };
 
   const getLeaveTypeName = (type) => {
+    const code = getLeaveTypeCode(type);
     const types = { sick: "ลาป่วย", personal: "ลากิจ", vacation: "ลาพักร้อน" };
-    return types[type] || type;
+    return types[code] || (typeof type === "object" ? type.name : type) || code;
   };
 
   const getLeaveTypeIcon = (type) => {
+    const code = getLeaveTypeCode(type);
     const icons = { sick: "🏥", personal: "📋", vacation: "🏖️" };
-    return icons[type] || "📝";
+    return icons[code] || "📝";
   };
 
   const selectedHoliday = getHolidayInfo(date);
